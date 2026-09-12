@@ -16,7 +16,7 @@ CLI_NAME="tfl-panel"
 DEFAULT_PORT=54321
 
 # Default GitHub Repo (User can override with REPO_URL environment variable)
-GITHUB_REPO="${GITHUB_REPO:-https://github.com/v3sakuraairiv3/tunnel-forde-lk}"
+GITHUB_REPO="${GITHUB_REPO:-https://github.com/BlackPantherV2ray/tunnel-forde-lk}"
 # Branch
 BRANCH="${BRANCH:-main}"
 

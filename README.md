@@ -11,12 +11,12 @@ Manage SSH accounts, generate FastSSH connection configs, monitor real-time netw
 Connect to your Ubuntu or Debian VPS via SSH and run this single command:
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/<YOUR-GITHUB-USERNAME>/tunnel-forde-lk/main/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/BlackPantherV2ray/tunnel-forde-lk/main/install.sh)
 ```
 
 *Or using wget:*
 ```bash
-wget -qO- https://raw.githubusercontent.com/<YOUR-GITHUB-USERNAME>/tunnel-forde-lk/main/install.sh | bash
+wget -qO- https://raw.githubusercontent.com/BlackPantherV2ray/tunnel-forde-lk/main/install.sh | bash
 ```
 
 > [!TIP]
@@ -114,12 +114,12 @@ To make your personal 1-line installer work under your GitHub profile:
    git add .
    git commit -m "feat: initial release of Tunnel Forde LK Web Panel"
    git branch -M main
-   git remote add origin https://github.com/<YOUR-USERNAME>/tunnel-forde-lk.git
+   git remote add origin https://github.com/BlackPantherV2ray/tunnel-forde-lk.git
    git push -u origin main
    ```
-3. Update the username in your install command:
+3. Run your 1-line installer on any VPS:
    ```bash
-   bash <(curl -Ls https://raw.githubusercontent.com/<YOUR-USERNAME>/tunnel-forde-lk/main/install.sh)
+   bash <(curl -fsSL https://raw.githubusercontent.com/BlackPantherV2ray/tunnel-forde-lk/main/install.sh)
    ```
 
 ---

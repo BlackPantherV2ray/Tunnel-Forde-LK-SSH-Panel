@@ -198,6 +198,26 @@ uninstall_panel() {
     fi
 }
 
+update_panel() {
+    echo -e "${C_YELLOW}Updating Tunnel Forde LK Panel from GitHub...${C_RESET}"
+    TMP_DIR=$(mktemp -d)
+    if git clone --depth=1 "https://github.com/BlackPantherV2ray/tunnel-forde-lk.git" "$TMP_DIR" 2>/dev/null; then
+        cp -r "$TMP_DIR"/public "$APP_DIR"/
+        cp -r "$TMP_DIR"/lib "$APP_DIR"/
+        cp -r "$TMP_DIR"/license-bot "$APP_DIR"/
+        cp "$TMP_DIR"/server.js "$APP_DIR"/
+        cp "$TMP_DIR"/package.json "$APP_DIR"/
+        cp "$TMP_DIR"/tfl-panel.sh /usr/bin/tfl-panel && chmod +x /usr/bin/tfl-panel
+        cd "$APP_DIR" && npm install --omit=dev --silent 2>/dev/null || true
+        systemctl restart "$SERVICE_NAME"
+        rm -rf "$TMP_DIR"
+        echo -e "${C_GREEN}✔ Tunnel Forde LK updated successfully to latest version!${C_RESET}"
+    else
+        echo -e "${C_RED}Failed to pull update. Please check your internet connection.${C_RESET}"
+        rm -rf "$TMP_DIR"
+    fi
+}
+
 main_menu() {
     check_root
     while true; do
@@ -211,11 +231,12 @@ main_menu() {
         echo -e "  ${C_CYAN}4)${C_RESET} Check Status & Login URL"
         echo -e "  ${C_CYAN}5)${C_RESET} Change Admin Username & Password"
         echo -e "  ${C_CYAN}6)${C_RESET} Configure Custom Domain & SSL (Let's Encrypt)"
-        echo -e "  ${C_CYAN}7)${C_RESET} View Live Logs"
-        echo -e "  ${C_CYAN}8)${C_RESET} Uninstall Panel"
+        echo -e "  ${C_CYAN}7)${C_RESET} Update Panel from GitHub"
+        echo -e "  ${C_CYAN}8)${C_RESET} View Live Logs"
+        echo -e "  ${C_CYAN}9)${C_RESET} Uninstall Panel"
         echo -e "  ${C_RED}0)${C_RESET} Exit"
         echo ""
-        read -rp "Select an option [0-8]: " OPTION
+        read -rp "Select an option [0-9]: " OPTION
 
         case "$OPTION" in
             1) start_panel; read -rp "Press Enter to continue..." ;;
@@ -224,8 +245,9 @@ main_menu() {
             4) status_panel; read -rp "Press Enter to continue..." ;;
             5) change_admin_credentials; read -rp "Press Enter to continue..." ;;
             6) configure_ssl; read -rp "Press Enter to continue..." ;;
-            7) view_logs ;;
-            8) uninstall_panel ;;
+            7) update_panel; read -rp "Press Enter to continue..." ;;
+            8) view_logs ;;
+            9) uninstall_panel ;;
             0) exit 0 ;;
             *) echo -e "${C_RED}Invalid option!${C_RESET}"; sleep 1 ;;
         esac
@@ -242,9 +264,10 @@ if [[ $# -gt 0 ]]; then
         status) status_panel ;;
         reset-admin|change-admin) change_admin_credentials ;;
         ssl) configure_ssl ;;
+        update) update_panel ;;
         logs) view_logs ;;
         uninstall) uninstall_panel ;;
-        *) echo "Usage: tfl-panel {start|stop|restart|status|reset-admin|ssl|logs|uninstall}" ;;
+        *) echo "Usage: tfl-panel {start|stop|restart|status|reset-admin|ssl|update|logs|uninstall}" ;;
     esac
 else
     main_menu

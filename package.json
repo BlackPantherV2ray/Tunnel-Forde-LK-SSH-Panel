@@ -24,6 +24,10 @@
     "vpn-panel",
     "tunnel-forde-lk"
   ],
-  "author": "Tunnel Forde LK",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BlackPantherV2ray/tunnel-forde-lk.git"
+  },
+  "author": "Black Panther (@Black_Panther_V2ray)",
   "license": "MIT"
 }
