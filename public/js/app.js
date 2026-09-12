@@ -172,6 +172,11 @@ function setupEventListeners() {
     restartAllBtn.addEventListener('click', handleRestartAllServices);
   }
 
+  const fixAllServicesBtn = document.getElementById('fix-all-services-btn');
+  if (fixAllServicesBtn) {
+    fixAllServicesBtn.addEventListener('click', handleFixAllServices);
+  }
+
   // Logs Tab Refresh Button
   const refreshLogsBtn = document.getElementById('refresh-logs-btn');
   if (refreshLogsBtn) {
@@ -995,6 +1000,20 @@ async function handleRestartAllServices() {
     fetchServices();
   } else {
     showToast('Error restarting services', 'error');
+  }
+}
+
+async function handleFixAllServices() {
+  if (!confirm('This will install & configure missing VPN services (Dropbear, WebSocket Proxy, BadVPN) on your VPS. Proceed?')) return;
+
+  showToast('Installing & configuring Core VPN services...', 'info');
+  const res = await apiRequest('/api/services/fix-all', 'POST');
+  if (res && res.success) {
+    showToast('VPN services setup initiated! Refreshing status...', 'success');
+    setTimeout(fetchServices, 4000);
+    setTimeout(fetchServices, 10000);
+  } else {
+    showToast(res ? res.error : 'Failed to start services setup', 'error');
   }
 }
 

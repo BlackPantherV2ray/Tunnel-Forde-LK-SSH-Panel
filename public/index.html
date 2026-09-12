@@ -434,9 +434,14 @@
               <h3><i data-lucide="cpu" class="inline-icon text-cyan"></i> Tunnel & Core Daemons</h3>
               <p class="text-muted">Manage systemd background services installed by Simple-Dimple.</p>
             </div>
-            <button id="restart-all-services-btn" class="btn btn-danger-outline">
-              <i data-lucide="rotate-ccw" class="btn-icon"></i> Restart All VPN Services
-            </button>
+            <div class="btn-group" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+              <button id="fix-all-services-btn" class="btn btn-primary" title="Installs Dropbear, WebSocket Proxy and BadVPN">
+                <i data-lucide="wrench" class="btn-icon"></i> Install / Fix VPN Services
+              </button>
+              <button id="restart-all-services-btn" class="btn btn-danger-outline">
+                <i data-lucide="rotate-ccw" class="btn-icon"></i> Restart All VPN Services
+              </button>
+            </div>
           </div>
 
           <div class="services-grid" id="services-grid-container">

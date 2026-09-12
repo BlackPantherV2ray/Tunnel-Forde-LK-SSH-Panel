@@ -328,6 +328,21 @@ app.post('/api/services/restart-all', authMiddleware, (req, res) => {
   }
 });
 
+// Install / Fix All Core VPN Services
+app.post('/api/services/fix-all', authMiddleware, (req, res) => {
+  try {
+    const scriptPath = path.join(__dirname, 'setup-vpn.sh');
+    if (fs.existsSync(scriptPath)) {
+      execSync(`bash "${scriptPath}" >/tmp/setup-vpn.log 2>&1 &`);
+      return res.json({ success: true, message: 'Core VPN services installation started in background' });
+    }
+    execSync(`curl -sSL "https://raw.githubusercontent.com/BlackPantherV2ray/tunnel-forde-lk/main/setup-vpn.sh" | bash >/tmp/setup-vpn.log 2>&1 &`);
+    res.json({ success: true, message: 'Core VPN services installation started in background' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Settings & Config
 app.get('/api/settings', authMiddleware, (req, res) => {
   const current = db.getSettings();
