@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tunnel Forde LK - Web Panel</title>
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- QR Code Generator -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-dark text-light">
+
+  <!-- ==================================================================== -->
+  <!-- LOGIN VIEW -->
+  <!-- ==================================================================== -->
+  <div id="login-view" class="login-container">
+    <div class="login-card">
+      <div class="brand-header">
+        <div class="brand-badge-lg">
+          <i data-lucide="zap" class="icon-brand"></i>
+        </div>
+        <h1 class="brand-title">Tunnel Forde LK</h1>
+        <p class="brand-subtitle">Next-Gen SSH & VPN Web Management Panel</p>
+      </div>
+
+      <form id="login-form" class="login-form">
+        <div class="form-group">
+          <label for="login-username"><i data-lucide="user" class="inline-icon"></i> Username</label>
+          <input type="text" id="login-username" class="form-control" placeholder="Admin username" required autofocus value="admin">
+        </div>
+
+        <div class="form-group">
+          <label for="login-password"><i data-lucide="lock" class="inline-icon"></i> Password</label>
+          <input type="password" id="login-password" class="form-control" placeholder="Enter admin password" required value="admin">
+        </div>
+
+        <button type="submit" id="login-btn" class="btn btn-primary btn-block">
+          <i data-lucide="log-in" class="btn-icon"></i> Sign In to Dashboard
+        </button>
+      </form>
+
+      <div class="login-footer">
+        <span>⚡ Protected by Tunnel Forde LK Core</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- DASHBOARD APPLICATION VIEW -->
+  <!-- ==================================================================== -->
+  <div id="app-view" class="app-layout d-none">
+    
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-mark">
+          <span class="bolt-icon">⚡</span>
+          <div>
+            <h2 class="sidebar-brand-name">Tunnel Forde LK</h2>
+            <span class="sidebar-brand-badge">SSH & WS Panel</span>
+          </div>
+        </div>
+        <button id="sidebar-close-btn" class="mobile-only-btn"><i data-lucide="x"></i></button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="#dashboard" class="nav-item active" data-tab="dashboard">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Dashboard</span>
+        </a>
+        <a href="#users" class="nav-item" data-tab="users">
+          <i data-lucide="users"></i>
+          <span>SSH & WS Accounts</span>
+          <span class="badge" id="sidebar-user-count">0</span>
+        </a>
+        <a href="#online" class="nav-item" data-tab="online">
+          <i data-lucide="radio"></i>
+          <span>Online Users</span>
+          <span class="badge badge-pulse" id="sidebar-online-count">0</span>
+        </a>
+        <a href="#services" class="nav-item" data-tab="services">
+          <i data-lucide="cpu"></i>
+          <span>System Services</span>
+        </a>
+        <a href="#logs" class="nav-item" data-tab="logs">
+          <i data-lucide="file-text"></i>
+          <span>Audit Logs</span>
+        </a>
+        <a href="#settings" class="nav-item" data-tab="settings">
+          <i data-lucide="settings"></i>
+          <span>Settings</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <a href="https://t.me/Black_Panther_V2ray" target="_blank" rel="noopener noreferrer" class="btn btn-telegram-contact" title="Telegram: @Black_Panther_V2ray">
+          <svg class="tg-svg-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
+          </svg>
+          <span>Contact Admin</span>
+        </a>
+
+        <div class="server-status-card">
+          <div class="status-indicator online"></div>
+          <div class="server-meta">
+            <span class="server-ip-label" id="sidebar-ip">Loading IP...</span>
+            <span class="server-uptime-label" id="sidebar-uptime">Uptime: --</span>
+          </div>
+        </div>
+        <button id="logout-btn" class="btn btn-logout">
+          <i data-lucide="log-out"></i> Logout
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- Top Navbar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button id="sidebar-toggle-btn" class="menu-toggle-btn">
+            <i data-lucide="menu"></i>
+          </button>
+          <h2 id="current-page-title" class="topbar-title">Dashboard</h2>
+        </div>
+        <div class="topbar-right">
+          <div class="quick-traffic">
+            <span class="traffic-tag"><i data-lucide="arrow-down" class="traffic-icon rx"></i> <span id="top-rx-speed">0 KB/s</span></span>
+            <span class="traffic-tag"><i data-lucide="arrow-up" class="traffic-icon tx"></i> <span id="top-tx-speed">0 KB/s</span></span>
+          </div>
+          <a href="https://t.me/Black_Panther_V2ray" target="_blank" rel="noopener noreferrer" class="btn-topbar-support" title="Telegram: @Black_Panther_V2ray">
+            <svg class="tg-svg-icon" viewBox="0 0 24 24" fill="currentColor" style="width: 15px; height: 15px;">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
+            </svg>
+            <span>Contact Admin</span>
+          </a>
+          <button id="refresh-all-btn" class="btn btn-outline-sm" title="Refresh data">
+            <i data-lucide="refresh-cw" class="btn-icon"></i>
+          </button>
+          <a href="#settings" class="admin-badge-btn nav-item" data-tab="settings" title="Admin Account Settings">
+            <i data-lucide="user-check"></i>
+            <span id="topbar-admin-username">admin</span>
+          </a>
+        </div>
+      </header>
+
+      <div class="content-body">
+
+        <!-- ============================================================== -->
+        <!-- TAB 1: DASHBOARD -->
+        <!-- ============================================================== -->
+        <section id="tab-dashboard" class="tab-content active">
+          
+          <!-- Top Stat Cards (X-UI Style) -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-header">
+                <span class="stat-label">Total Accounts</span>
+                <div class="stat-icon-wrapper blue"><i data-lucide="users"></i></div>
+              </div>
+              <div class="stat-value" id="stat-total-users">0</div>
+              <div class="stat-subtext text-muted"><span id="stat-active-users">0</span> active accounts</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-header">
+                <span class="stat-label">Online Sessions</span>
+                <div class="stat-icon-wrapper green"><i data-lucide="activity"></i></div>
+              </div>
+              <div class="stat-value text-emerald" id="stat-online-sessions">0</div>
+              <div class="stat-subtext text-emerald"><span class="status-indicator online inline"></span> Live Tunnel Clients</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-header">
+                <span class="stat-label">Expired Accounts</span>
+                <div class="stat-icon-wrapper red"><i data-lucide="clock"></i></div>
+              </div>
+              <div class="stat-value text-rose" id="stat-expired-users">0</div>
+              <div class="stat-subtext text-muted"><span id="stat-locked-users">0</span> locked accounts</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-header">
+                <span class="stat-label">Total Bandwidth</span>
+                <div class="stat-icon-wrapper purple"><i data-lucide="globe"></i></div>
+              </div>
+              <div class="stat-value" id="stat-total-traffic">0 MB</div>
+              <div class="stat-subtext text-muted">↓ <span id="stat-rx-traffic">0</span> MB | ↑ <span id="stat-tx-traffic">0</span> MB</div>
+            </div>
+          </div>
+
+          <!-- Live Gauges & System Information -->
+          <div class="system-grid">
+            <!-- CPU & RAM Cards -->
+            <div class="card system-meter-card">
+              <div class="card-header">
+                <h3><i data-lucide="gauge" class="inline-icon"></i> System Resources</h3>
+              </div>
+              <div class="meters-container">
+                <div class="meter-box">
+                  <div class="meter-header">
+                    <span>CPU Usage</span>
+                    <strong id="gauge-cpu-val">0%</strong>
+                  </div>
+                  <div class="progress-bar-bg">
+                    <div id="gauge-cpu-bar" class="progress-bar-fill fill-blue" style="width: 0%"></div>
+                  </div>
+                </div>
+
+                <div class="meter-box">
+                  <div class="meter-header">
+                    <span>Memory (RAM)</span>
+                    <strong id="gauge-ram-val">0 MB / 0 MB (0%)</strong>
+                  </div>
+                  <div class="progress-bar-bg">
+                    <div id="gauge-ram-bar" class="progress-bar-fill fill-emerald" style="width: 0%"></div>
+                  </div>
+                </div>
+
+                <div class="meter-box">
+                  <div class="meter-header">
+                    <span>Root Disk Storage</span>
+                    <strong id="gauge-disk-val">0 GB / 0 GB (0%)</strong>
+                  </div>
+                  <div class="progress-bar-bg">
+                    <div id="gauge-disk-bar" class="progress-bar-fill fill-purple" style="width: 0%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Server Specs Card -->
+            <div class="card system-specs-card">
+              <div class="card-header">
+                <h3><i data-lucide="server" class="inline-icon"></i> Server Environment</h3>
+              </div>
+              <div class="specs-list">
+                <div class="spec-row">
+                  <span class="spec-title">Public IPv4:</span>
+                  <span class="spec-data font-mono font-bold text-cyan" id="spec-ip">---.---.---.---</span>
+                </div>
+                <div class="spec-row">
+                  <span class="spec-title">Operating System:</span>
+                  <span class="spec-data" id="spec-os">Linux</span>
+                </div>
+                <div class="spec-row">
+                  <span class="spec-title">Architecture:</span>
+                  <span class="spec-data font-mono" id="spec-arch">x86_64</span>
+                </div>
+                <div class="spec-row">
+                  <span class="spec-title">Hostname:</span>
+                  <span class="spec-data" id="spec-hostname">vps</span>
+                </div>
+                <div class="spec-row">
+                  <span class="spec-title">System Uptime:</span>
+                  <span class="spec-data font-mono text-emerald" id="spec-uptime">0h 0m</span>
+                </div>
+                <div class="spec-row">
+                  <span class="spec-title">Panel Version:</span>
+                  <span class="spec-data badge-tag">v1.0.0 (Tunnel Forde LK)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Protocols Banner -->
+          <div class="card protocols-banner">
+            <div class="banner-content">
+              <div>
+                <h4><span class="text-neon">⚡</span> Active Protocol Ports on this VPS</h4>
+                <p class="text-muted">Compatible with HTTP Custom, HTTP Injector, NapsternetV, PuTTY, OpenVPN, BadVPN UDPGW.</p>
+              </div>
+              <div class="protocol-tags">
+                <span class="protocol-pill"><span class="p-dot"></span> SSH: <b>22</b></span>
+                <span class="protocol-pill"><span class="p-dot"></span> Dropbear: <b>109, 143</b></span>
+                <span class="protocol-pill"><span class="p-dot"></span> SSL/TLS: <b>443</b></span>
+                <span class="protocol-pill"><span class="p-dot"></span> WS HTTP: <b>80, 8080, 8880</b></span>
+                <span class="protocol-pill"><span class="p-dot"></span> UDPGW: <b>7100-7300</b></span>
+              </div>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- TAB 2: SSH & WS USERS -->
+        <!-- ============================================================== -->
+        <section id="tab-users" class="tab-content">
+          <div class="section-actions">
+            <div class="search-box">
+              <i data-lucide="search" class="search-icon"></i>
+              <input type="text" id="user-search-input" class="search-control" placeholder="Search accounts by username...">
+            </div>
+            <div class="action-buttons">
+              <button id="open-create-user-modal-btn" class="btn btn-primary">
+                <i data-lucide="user-plus" class="btn-icon"></i> Create SSH Account
+              </button>
+            </div>
+          </div>
+
+          <div class="card table-card">
+            <div class="table-responsive">
+              <table class="custom-table" id="users-table">
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Username</th>
+                    <th>Password</th>
+                    <th>Expiration Date</th>
+                    <th>Device Limit</th>
+                    <th>Live Sessions</th>
+                    <th>Note</th>
+                    <th class="text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="users-table-body">
+                  <tr>
+                    <td colspan="8" class="text-center py-4 text-muted">Loading accounts...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- TAB 3: ONLINE USERS -->
+        <!-- ============================================================== -->
+        <section id="tab-online" class="tab-content">
+          <div class="section-actions">
+            <div>
+              <h3><i data-lucide="radio" class="inline-icon text-emerald"></i> Active Connected Clients</h3>
+              <p class="text-muted">Real-time Dropbear & OpenSSH active tunnel sessions. Over-limit logins are auto-terminated.</p>
+            </div>
+            <button id="refresh-online-btn" class="btn btn-outline">
+              <i data-lucide="refresh-cw" class="btn-icon"></i> Refresh Online
+            </button>
+          </div>
+
+          <div class="card table-card">
+            <div class="table-responsive">
+              <table class="custom-table" id="online-table">
+                <thead>
+                  <tr>
+                    <th>Session PID</th>
+                    <th>Username</th>
+                    <th>Client Remote IP</th>
+                    <th>Protocol</th>
+                    <th>Connected Time</th>
+                    <th class="text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="online-table-body">
+                  <tr>
+                    <td colspan="6" class="text-center py-4 text-muted">No active sessions detected.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- TAB 4: SYSTEM SERVICES -->
+        <!-- ============================================================== -->
+        <section id="tab-services" class="tab-content">
+          <div class="section-actions">
+            <div>
+              <h3><i data-lucide="cpu" class="inline-icon text-cyan"></i> Tunnel & Core Daemons</h3>
+              <p class="text-muted">Manage systemd background services installed by Simple-Dimple.</p>
+            </div>
+            <button id="restart-all-services-btn" class="btn btn-danger-outline">
+              <i data-lucide="rotate-ccw" class="btn-icon"></i> Restart All VPN Services
+            </button>
+          </div>
+
+          <div class="services-grid" id="services-grid-container">
+            <!-- Dynamically populated -->
+          </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- TAB 5: AUDIT LOGS -->
+        <!-- ============================================================== -->
+        <section id="tab-logs" class="tab-content">
+          <div class="section-actions">
+            <div>
+              <h3><i data-lucide="file-text" class="inline-icon text-purple"></i> Activity & Security Audit Logs</h3>
+              <p class="text-muted">Recent administrative actions, user creations, logins, and auto-kills.</p>
+            </div>
+            <button id="refresh-logs-btn" class="btn btn-outline">
+              <i data-lucide="refresh-cw" class="btn-icon"></i> Refresh Logs
+            </button>
+          </div>
+
+          <div class="card table-card">
+            <div class="table-responsive">
+              <table class="custom-table" id="logs-table">
+                <thead>
+                  <tr>
+                    <th>Timestamp</th>
+                    <th>Action</th>
+                    <th>Details</th>
+                  </tr>
+                </thead>
+                <tbody id="logs-table-body">
+                  <tr>
+                    <td colspan="3" class="text-center py-4 text-muted">No logs recorded yet.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- TAB 6: SETTINGS -->
+        <!-- ============================================================== -->
+        <section id="tab-settings" class="tab-content">
+          <div class="settings-grid">
+            
+            <!-- Branding & General Settings -->
+            <div class="card">
+              <div class="card-header">
+                <h3><i data-lucide="sliders" class="inline-icon text-cyan"></i> Panel Customization</h3>
+              </div>
+              <form id="settings-general-form">
+                <div class="form-group">
+                  <label for="settings-panel-name">Panel Brand Name</label>
+                  <input type="text" id="settings-panel-name" class="form-control" value="Tunnel Forde LK">
+                </div>
+
+                <div class="form-group">
+                  <label for="settings-autokill-interval">Auto-Kill Enforcer Interval (Seconds)</label>
+                  <select id="settings-autokill-interval" class="form-control">
+                    <option value="0">Disabled (Manual kick only)</option>
+                    <option value="30" selected>Every 30 seconds (Recommended)</option>
+                    <option value="60">Every 60 seconds</option>
+                    <option value="120">Every 2 minutes</option>
+                  </select>
+                  <small class="form-hint">Terminates unauthorized extra logins based on each user's Device Limit.</small>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                  <i data-lucide="save" class="btn-icon"></i> Save General Settings
+                </button>
+              </form>
+            </div>
+
+            <!-- Admin Credentials -->
+            <div class="card">
+              <div class="card-header">
+                <h3><i data-lucide="shield" class="inline-icon text-emerald"></i> Web Panel Admin Login Credentials</h3>
+              </div>
+              <p class="text-muted mb-3" style="font-size: 0.84rem;">
+                Change your panel username and password directly from here.
+              </p>
+              <form id="settings-admin-form">
+                <div class="form-group">
+                  <label for="settings-admin-user">Admin Username <span class="text-rose">*</span></label>
+                  <input type="text" id="settings-admin-user" class="form-control font-mono" value="admin" required autocomplete="username" placeholder="e.g. admin">
+                  <small class="form-hint">The username you enter when logging into this web panel.</small>
+                </div>
+
+                <div class="form-group">
+                  <label for="settings-admin-newpass">New Password (Optional)</label>
+                  <div class="password-input-wrap">
+                    <input type="password" id="settings-admin-newpass" class="form-control" placeholder="Leave blank to keep current password" autocomplete="new-password">
+                    <button type="button" class="btn-toggle-eye" data-target="settings-admin-newpass" title="Show/Hide Password">
+                      <i data-lucide="eye"></i>
+                    </button>
+                  </div>
+                  <small class="form-hint">Must be at least 4 characters if changing.</small>
+                </div>
+
+                <div class="form-group">
+                  <label for="settings-admin-confirmpass">Confirm New Password</label>
+                  <div class="password-input-wrap">
+                    <input type="password" id="settings-admin-confirmpass" class="form-control" placeholder="Re-enter new password" autocomplete="new-password">
+                    <button type="button" class="btn-toggle-eye" data-target="settings-admin-confirmpass" title="Show/Hide Password">
+                      <i data-lucide="eye"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <button type="submit" class="btn btn-emerald" id="save-admin-cred-btn">
+                  <i data-lucide="check-circle" class="btn-icon"></i> Save New Username & Password
+                </button>
+              </form>
+            </div>
+
+            <!-- Telegram Bot Integration (Like 3X-UI) -->
+            <div class="card">
+              <div class="card-header">
+                <h3><i data-lucide="send" class="inline-icon text-cyan"></i> Telegram Bot & Cloud Backup</h3>
+              </div>
+              <p class="text-muted mb-3" style="font-size: 0.84rem;">
+                Connect a Telegram Bot (like 3X-UI) to receive automatic daily backups, admin alerts, and send commands (<code>/backup</code>, <code>/status</code>, <code>/users</code>).
+              </p>
+              <form id="settings-telegram-form">
+                <div class="form-group">
+                  <label for="settings-tg-token">Telegram Bot Token</label>
+                  <input type="password" id="settings-tg-token" class="form-control" placeholder="123456789:ABCdefGhIJKlmNoPQRstuVWXyz">
+                  <small class="form-hint">Create a bot via <a href="https://t.me/BotFather" target="_blank" style="color: var(--accent-cyan);">@BotFather</a> to get your API Token.</small>
+                </div>
+
+                <div class="form-group">
+                  <label for="settings-tg-chatid">Telegram Chat ID</label>
+                  <input type="text" id="settings-tg-chatid" class="form-control" placeholder="e.g. 987654321">
+                  <small class="form-hint">Send any message to <a href="https://t.me/userinfobot" target="_blank" style="color: var(--accent-cyan);">@userinfobot</a> to find your numeric Chat ID.</small>
+                </div>
+
+                <div class="form-group">
+                  <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" id="settings-tg-dailybackup" checked>
+                    <span>Send Automated Daily Backup (.json) at 00:00</span>
+                  </label>
+                </div>
+
+                <div class="form-group">
+                  <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" id="settings-tg-loginalert" checked>
+                    <span>Instant Alert on Admin Login</span>
+                  </label>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;" class="mt-3">
+                  <button type="button" class="btn btn-outline" id="test-tg-btn">
+                    <i data-lucide="plug-zap" class="btn-icon"></i> Test Connection
+                  </button>
+                  <button type="submit" class="btn btn-primary">
+                    <i data-lucide="save" class="btn-icon"></i> Save Bot
+                  </button>
+                  <button type="button" class="btn btn-emerald" id="send-tg-backup-btn">
+                    <i data-lucide="upload-cloud" class="btn-icon"></i> Send Backup Now
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Backup & Restore -->
+            <div class="card">
+              <div class="card-header">
+                <h3><i data-lucide="database" class="inline-icon text-purple"></i> Backup & Restore Database</h3>
+              </div>
+              
+              <!-- Download Backup -->
+              <div class="mb-4 pb-3" style="border-bottom: 1px solid var(--border-color);">
+                <h4 style="font-size: 0.95rem; margin-bottom: 0.35rem;">Export Backup</h4>
+                <p class="text-muted mb-3" style="font-size: 0.84rem;">Export all user accounts, settings, and credentials into a single JSON file on your computer.</p>
+                <a href="/api/backup" target="_blank" class="btn btn-outline" id="backup-download-btn">
+                  <i data-lucide="download" class="btn-icon"></i> Download Backup (JSON)
+                </a>
+              </div>
+
+              <!-- Restore Backup -->
+              <div>
+                <h4 style="font-size: 0.95rem; margin-bottom: 0.35rem; color: var(--accent-cyan);">Restore / Import Backup</h4>
+                <p class="text-muted mb-3" style="font-size: 0.84rem;">Restore accounts and configuration from a previously saved JSON file (or Telegram backup file). All user accounts will be re-provisioned on the VPS automatically.</p>
+                
+                <div class="form-group mb-3">
+                  <input type="file" id="restore-file-input" accept=".json,application/json" class="form-control" style="padding: 0.5rem;">
+                </div>
+
+                <button type="button" class="btn btn-primary" id="restore-upload-btn">
+                  <i data-lucide="upload" class="btn-icon"></i> Upload & Restore Backup
+                </button>
+              </div>
+            </div>
+
+            <!-- Official Support & Community License Card -->
+            <div class="card">
+              <div class="card-header">
+                <h3><i data-lucide="shield-check" class="inline-icon text-cyan"></i> Official Support & License Status</h3>
+              </div>
+              <div class="specs-list mb-3">
+                <div class="spec-row">
+                  <span class="spec-title">Panel Release:</span>
+                  <span class="spec-data text-emerald font-bold" id="license-panel-release">Community Free Edition (Unlimited Access)</span>
+                </div>
+                <div class="spec-row">
+                  <span class="spec-title">License Status:</span>
+                  <span class="spec-data" id="license-panel-status"><span class="status-badge active"><span class="status-indicator online inline"></span> Active & Unlimited</span></span>
+                </div>
+                <div class="spec-row">
+                  <span class="spec-title">Official Developer:</span>
+                  <span class="spec-data font-mono font-bold text-cyan">@Black_Panther_V2ray</span>
+                </div>
+              </div>
+              <p class="text-muted mb-3" style="font-size: 0.84rem;">
+                Need assistance, updates, or custom setup? Contact the official developer directly on Telegram:
+              </p>
+              <a href="https://t.me/Black_Panther_V2ray" target="_blank" rel="noopener noreferrer" class="btn btn-telegram-contact">
+                <svg class="tg-svg-icon" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
+                </svg>
+                <span>Contact Admin on Telegram (@Black_Panther_V2ray)</span>
+              </a>
+
+              <div class="mt-4 pt-3" style="border-top: 1px solid var(--border-color);">
+                <h4 style="font-size: 0.92rem; margin-bottom: 0.5rem; color: var(--accent-cyan);">Activate Monthly or Lifetime License Key</h4>
+                <div class="input-with-action">
+                  <input type="text" id="license-input-key" class="form-control font-mono" placeholder="TFL-ey... (Paste key from bot)">
+                  <button type="button" class="btn btn-emerald" id="activate-license-btn">
+                    <i data-lucide="key" class="btn-icon"></i> Activate
+                  </button>
+                </div>
+                <small class="form-hint" id="license-check-hint">Currently running in Community Free Mode. Paid or Lifetime keys can be activated anytime.</small>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- MODAL: CREATE SSH USER -->
+  <!-- ==================================================================== -->
+  <div id="create-user-modal" class="modal-overlay d-none">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i data-lucide="user-plus" class="text-cyan"></i>
+          <h3>Create SSH / WebSocket Account</h3>
+        </div>
+        <button class="modal-close-btn" data-close-modal="create-user-modal"><i data-lucide="x"></i></button>
+      </div>
+
+      <form id="create-user-form">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="new-username">Username <span class="text-rose">*</span></label>
+            <input type="text" id="new-username" class="form-control" placeholder="e.g. user01" required autocomplete="off">
+            <small class="form-hint">Letters, numbers, underscores (3-20 chars).</small>
+          </div>
+
+          <div class="form-group">
+            <label for="new-password">Password <span class="text-rose">*</span></label>
+            <div class="input-with-action">
+              <input type="text" id="new-password" class="form-control" placeholder="Account password" required>
+              <button type="button" class="btn btn-input-action" id="gen-random-pass-btn">Generate</button>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group col-6">
+              <label for="new-expire-days">Validity (Days) <span class="text-rose">*</span></label>
+              <input type="number" id="new-expire-days" class="form-control" value="30" min="1" max="365" required>
+            </div>
+            <div class="form-group col-6">
+              <label for="new-ip-limit">Device / IP Limit <span class="text-rose">*</span></label>
+              <input type="number" id="new-ip-limit" class="form-control" value="1" min="1" max="10" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="new-note">Customer Note (Optional)</label>
+            <input type="text" id="new-note" class="form-control" placeholder="Buyer name, Telegram @user, or phone">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" data-close-modal="create-user-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="submit-create-user-btn">
+            <i data-lucide="check" class="btn-icon"></i> Create Account
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- MODAL: VIEW CONFIG & FASTSSH EXPORT -->
+  <!-- ==================================================================== -->
+  <div id="config-modal" class="modal-overlay d-none">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i data-lucide="file-check" class="text-emerald"></i>
+          <h3>Account Configuration & Payload</h3>
+        </div>
+        <button class="modal-close-btn" data-close-modal="config-modal"><i data-lucide="x"></i></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="config-tabs">
+          <button class="config-tab-btn active" data-cfg-tab="text-format">FastSSH Text</button>
+          <button class="config-tab-btn" data-cfg-tab="payloads">WebSocket Payloads</button>
+          <button class="config-tab-btn" data-cfg-tab="qr-code">QR Code</button>
+        </div>
+
+        <!-- Tab 1: Formatted Text -->
+        <div id="cfg-tab-text-format" class="cfg-content-tab active">
+          <div class="code-box-wrapper">
+            <pre id="config-text-pre" class="code-box"></pre>
+            <button class="btn-copy-code" id="copy-config-text-btn">
+              <i data-lucide="copy"></i> Copy Text
+            </button>
+          </div>
+        </div>
+
+        <!-- Tab 2: Payloads -->
+        <div id="cfg-tab-payloads" class="cfg-content-tab">
+          <div class="form-group">
+            <label>Direct WebSocket HTTP Payload (Port 80 / 8080):</label>
+            <div class="input-with-action">
+              <input type="text" id="cfg-payload-http" class="form-control font-mono" readonly>
+              <button class="btn btn-input-action" id="copy-payload-http-btn">Copy</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Cloudflare CDN WebSocket Payload:</label>
+            <div class="input-with-action">
+              <input type="text" id="cfg-payload-cf" class="form-control font-mono" readonly>
+              <button class="btn btn-input-action" id="copy-payload-cf-btn">Copy</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: QR Code -->
+        <div id="cfg-tab-qr-code" class="cfg-content-tab text-center">
+          <div id="qrcode-container" class="qrcode-wrapper"></div>
+          <p class="text-muted mt-2">Scan with NapsternetV / V2rayNG or camera to import details.</p>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-close-modal="config-modal">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- MODAL: RENEW USER -->
+  <!-- ==================================================================== -->
+  <div id="renew-modal" class="modal-overlay d-none">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i data-lucide="calendar-plus" class="text-cyan"></i>
+          <h3>Renew Account: <span id="renew-username-title"></span></h3>
+        </div>
+        <button class="modal-close-btn" data-close-modal="renew-modal"><i data-lucide="x"></i></button>
+      </div>
+
+      <form id="renew-user-form">
+        <div class="modal-body">
+          <p class="text-muted mb-3">Add days to this user's expiration date:</p>
+          <div class="quick-days-btn-group">
+            <button type="button" class="btn btn-quick-day" data-days="7">+7 Days</button>
+            <button type="button" class="btn btn-quick-day" data-days="15">+15 Days</button>
+            <button type="button" class="btn btn-quick-day active" data-days="30">+30 Days</button>
+            <button type="button" class="btn btn-quick-day" data-days="60">+60 Days</button>
+          </div>
+
+          <div class="form-group mt-3">
+            <label for="renew-custom-days">Custom Additional Days:</label>
+            <input type="number" id="renew-custom-days" class="form-control" value="30" min="1" max="365" required>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" data-close-modal="renew-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Extend Expiration</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Custom JavaScript -->
+  <script src="js/app.js"></script>
+</body>
+</html>

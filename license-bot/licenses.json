@@ -1,0 +1,22 @@
+[
+  {
+    "ip": "172.104.63.47",
+    "key": "TFL-eyJpcCI6IjE3Mi4xMDQuNjMuNDciLCJleHAiOjE3OTE3OTQyNTk2NDAsInR5cGUiOiJtb250aGx5IiwiaWF0IjoxNzg5MjAyMjU5NjQwfQ-97B91BF426E2B162",
+    "days": 30,
+    "expTime": 1791794259640,
+    "type": "monthly",
+    "status": "active",
+    "createdAt": "2026-09-12T08:37:39.702Z",
+    "updatedAt": "2026-09-12T08:37:39.703Z"
+  },
+  {
+    "ip": "Generate",
+    "key": "TFL-eyJpcCI6ImdlbmVyYXRlIiwiZXhwIjpudWxsLCJ0eXBlIjoibW9udGhseSIsImlhdCI6MTc4OTIwMzE5MDYxN30-75CD5E952929F235",
+    "days": null,
+    "expTime": null,
+    "type": "monthly",
+    "status": "active",
+    "createdAt": "2026-09-12T08:53:10.618Z",
+    "updatedAt": "2026-09-12T08:53:10.618Z"
+  }
+]

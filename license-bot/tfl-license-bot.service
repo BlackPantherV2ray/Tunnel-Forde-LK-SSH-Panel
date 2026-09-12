@@ -1,0 +1,15 @@
+[Unit]
+Description=Tunnel Forde LK - Telegram License Manager Bot
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/tunnel-forde-lk/license-bot
+ExecStart=/usr/bin/node /opt/tunnel-forde-lk/license-bot/bot.js
+Restart=always
+RestartSec=5s
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

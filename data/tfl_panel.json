@@ -1,0 +1,21 @@
+{
+  "settings": {
+    "panelName": "Tunnel Forde LK",
+    "panelPort": 54321,
+    "adminUser": "admin",
+    "adminPassHash": "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918",
+    "jwtSecret": "52bb6499c3c864a327fc88cace9e713acf4587389327a37bf3fa376f57f07d34",
+    "autoKillInterval": 60,
+    "telegramBotToken": "",
+    "telegramChatId": "",
+    "sshDirectPort": 22,
+    "dropbearPort": 109,
+    "stunnelPort": 443,
+    "wsHttpPort": 80,
+    "wsTlsPort": 443,
+    "badvpnPort": 7300,
+    "slowDnsPort": 5300
+  },
+  "users": [],
+  "logs": []
+}
