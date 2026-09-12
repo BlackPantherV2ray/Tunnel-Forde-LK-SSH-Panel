@@ -1055,6 +1055,8 @@ async function fetchSettings() {
 
   const s = data.settings;
   document.getElementById('settings-panel-name').value = s.panelName || 'Tunnel Forde LK';
+  const domainEl = document.getElementById('settings-server-domain');
+  if (domainEl) domainEl.value = s.serverDomain || s.sslDomain || (location.hostname && !location.hostname.match(/^\d+\.\d+\.\d+\.\d+$/) ? location.hostname : '');
   document.getElementById('settings-autokill-interval').value = s.autoKillInterval || 30;
   document.getElementById('settings-admin-user').value = s.adminUser || 'admin';
 
@@ -1103,9 +1105,11 @@ async function fetchLicenseStatus() {
 async function handleSaveGeneralSettings(e) {
   e.preventDefault();
   const panelName = document.getElementById('settings-panel-name').value.trim();
+  const domainInput = document.getElementById('settings-server-domain');
+  const serverDomain = domainInput ? domainInput.value.trim() : '';
   const autoKillInterval = document.getElementById('settings-autokill-interval').value;
 
-  const res = await apiRequest('/api/settings', 'POST', { panelName, autoKillInterval });
+  const res = await apiRequest('/api/settings', 'POST', { panelName, serverDomain, autoKillInterval });
   if (res && res.success) {
     showToast('Settings saved successfully!', 'success');
     document.title = `${panelName} - Web Panel`;

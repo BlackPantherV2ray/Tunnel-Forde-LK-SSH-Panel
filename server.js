@@ -221,6 +221,14 @@ app.get('/api/users/:username/config', authMiddleware, (req, res) => {
 
   const curSettings = db.getSettings();
   const serverIp = system.getPublicIp();
+
+  // Auto-detect domain from settings or from browser request hostname
+  let domain = (curSettings.serverDomain || curSettings.sslDomain || '').trim();
+  if (!domain && req.hostname && req.hostname !== 'localhost' && !req.hostname.match(/^\d+\.\d+\.\d+\.\d+$/)) {
+    domain = req.hostname;
+  }
+  const effectiveHost = domain || serverIp;
+
   const quotaStr = user.dataLimitGB && parseFloat(user.dataLimitGB) > 0 ? `${user.dataLimitGB} GB` : 'Unlimited';
   const usedStr = traffic.formatBytes(user.totalUsageBytes || 0);
 
@@ -228,7 +236,8 @@ app.get('/api/users/:username/config', authMiddleware, (req, res) => {
     username: user.username,
     password: user.password,
     serverIp: serverIp,
-    host: serverIp,
+    host: effectiveHost,
+    domain: domain || null,
     expiryDate: user.expiryDate,
     ipLimit: user.ipLimit,
     dataQuota: quotaStr,
@@ -243,13 +252,14 @@ app.get('/api/users/:username/config', authMiddleware, (req, res) => {
       slowDns: curSettings.slowDnsPort || 5300
     },
     payloads: {
-      websocketHttp: `GET / HTTP/1.1[crlf]Host: ${serverIp}[crlf]Upgrade: websocket[crlf]Connection: Keep-Alive[crlf][crlf]`,
+      websocketHttp: `GET / HTTP/1.1[crlf]Host: ${effectiveHost}[crlf]Upgrade: websocket[crlf]Connection: Keep-Alive[crlf][crlf]`,
       websocketCloudflare: `GET / HTTP/1.1[crlf]Host: [host][crlf]Upgrade: websocket[crlf]Connection: Keep-Alive[crlf][crlf]`
     },
     formattedText: `=================================
 ⚡ ${curSettings.panelName || 'Tunnel Forde LK'} - SSH Account
 =================================
-Host / IP      : ${serverIp}
+Host / Domain  : ${effectiveHost}
+Server IP      : ${serverIp}
 Username       : ${user.username}
 Password       : ${user.password}
 Expired Date   : ${user.expiryDate}
@@ -263,9 +273,10 @@ SSL/TLS Port   : ${curSettings.stunnelPort || 443}
 WS (HTTP) Port : ${curSettings.wsHttpPort || 80}
 WS (TLS) Port  : ${curSettings.wsTlsPort || 443}
 BadVPN UDPGW   : ${curSettings.badvpnPort || 7300}
+SlowDNS Port   : ${curSettings.slowDnsPort || 5300}
 ---------------------------------
 HTTP Custom / NapsternetV Payload:
-GET / HTTP/1.1[crlf]Host: ${serverIp}[crlf]Upgrade: websocket[crlf]Connection: Keep-Alive[crlf][crlf]
+GET / HTTP/1.1[crlf]Host: ${effectiveHost}[crlf]Upgrade: websocket[crlf]Connection: Keep-Alive[crlf][crlf]
 =================================
 Thank you for using Tunnel Forde LK!
 =================================`
@@ -359,6 +370,7 @@ app.post('/api/settings', authMiddleware, (req, res) => {
     const updates = {};
 
     if (panelName) updates.panelName = panelName;
+    if (typeof req.body.serverDomain !== 'undefined') updates.serverDomain = req.body.serverDomain.trim();
     if (typeof autoKillInterval !== 'undefined') updates.autoKillInterval = parseInt(autoKillInterval, 10);
     if (adminUsername) updates.adminUser = adminUsername;
     if (newAdminPassword && newAdminPassword.length >= 4) {
