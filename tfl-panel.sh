@@ -56,11 +56,31 @@ status_panel() {
     if systemctl is-active --quiet "$SERVICE_NAME"; then
         echo -e "${C_GREEN}● Tunnel Forde LK Panel is RUNNING (Active)${C_RESET}"
         local IP
-        IP=$(curl -s4 --max-time 3 https://api.ipify.org || echo "YOUR-SERVER-IP")
+        IP=$(curl -s4 --max-time 3 https://api.ipify.org || hostname -I | awk '{print $1}' || echo "YOUR-SERVER-IP")
         local PORT
         PORT=$(grep -o '"panelPort": [0-9]*' "${APP_DIR}/data/tfl_panel.json" 2>/dev/null | awk '{print $2}')
         PORT=${PORT:-54321}
-        echo -e "${C_WHITE}Web Dashboard URL:${C_RESET} ${C_CYAN}http://${IP}:${PORT}${C_RESET}"
+
+        local DOMAIN
+        DOMAIN=$(node -e "
+        const fs = require('fs');
+        try {
+            const d = JSON.parse(fs.readFileSync('${APP_DIR}/data/tfl_panel.json', 'utf8'));
+            console.log((d.settings.serverDomain || d.settings.sslDomain || '').trim());
+        } catch(e) { console.log(''); }
+        " 2>/dev/null || true)
+
+        local IS_HTTPS
+        IS_HTTPS=$(grep -o '"enableHttps": true' "${APP_DIR}/data/tfl_panel.json" 2>/dev/null || true)
+        local PROTO="http"
+        [[ -n "$IS_HTTPS" ]] && PROTO="https"
+
+        if [[ -n "$DOMAIN" ]]; then
+            echo -e "${C_WHITE}Web Dashboard URL:${C_RESET} ${C_GREEN}${PROTO}://${DOMAIN}:${PORT}${C_RESET}"
+            echo -e "${C_MUTED}Direct IP URL:${C_RESET}     ${C_CYAN}http://${IP}:${PORT}${C_RESET}"
+        else
+            echo -e "${C_WHITE}Web Dashboard URL:${C_RESET} ${C_CYAN}${PROTO}://${IP}:${PORT}${C_RESET}"
+        fi
     else
         echo -e "${C_RED}● Tunnel Forde LK Panel is STOPPED (Inactive)${C_RESET}"
     fi
