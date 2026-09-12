@@ -223,19 +223,29 @@ uninstall_panel() {
 update_panel() {
     echo -e "${C_YELLOW}Updating Tunnel Forde LK Panel from GitHub...${C_RESET}"
     TMP_DIR=$(mktemp -d)
+    local CLONED=false
+
     if git clone --depth=1 "https://github.com/BlackPantherV2ray/Tunnel-Forde-LK-SSH-Panel.git" "$TMP_DIR" 2>/dev/null; then
+        CLONED=true
+    elif git clone --depth=1 "https://github.com/BlackPantherV2ray/tunnel-forde-lk.git" "$TMP_DIR" 2>/dev/null; then
+        CLONED=true
+    fi
+
+    if [[ "$CLONED" == "true" ]]; then
         cp -r "$TMP_DIR"/public "$APP_DIR"/
         cp -r "$TMP_DIR"/lib "$APP_DIR"/
-        cp -r "$TMP_DIR"/license-bot "$APP_DIR"/
+        cp -r "$TMP_DIR"/license-bot "$APP_DIR"/ 2>/dev/null || true
         cp "$TMP_DIR"/server.js "$APP_DIR"/
         cp "$TMP_DIR"/package.json "$APP_DIR"/
+        cp "$TMP_DIR"/setup-vpn.sh "$APP_DIR"/ 2>/dev/null || true
         cp "$TMP_DIR"/tfl-panel.sh /usr/bin/tfl-panel && chmod +x /usr/bin/tfl-panel
         cd "$APP_DIR" && npm install --omit=dev --silent 2>/dev/null || true
         systemctl restart "$SERVICE_NAME"
         rm -rf "$TMP_DIR"
         echo -e "${C_GREEN}✔ Tunnel Forde LK updated successfully to latest version!${C_RESET}"
+        echo -e "${C_CYAN}All your accounts, settings, and database were safely preserved.${C_RESET}"
     else
-        echo -e "${C_RED}Failed to pull update. Please check your internet connection.${C_RESET}"
+        echo -e "${C_RED}Failed to pull update. Please check your GitHub repository URL or internet connection.${C_RESET}"
         rm -rf "$TMP_DIR"
     fi
 }

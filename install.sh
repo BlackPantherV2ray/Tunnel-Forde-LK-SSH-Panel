@@ -229,22 +229,39 @@ if [[ "$CUSTOM_ADMIN" =~ ^[Yy]$ ]]; then
     read -rp "Enter custom admin password [admin]: " INPUT_PASS
     [[ -n "$INPUT_USER" ]] && ADMIN_USER="$INPUT_USER"
     [[ -n "$INPUT_PASS" ]] && ADMIN_PASS="$INPUT_PASS"
-fi
 
-# Save credentials into panel database
-node -e "
-const fs = require('fs');
-const crypto = require('crypto');
-const path = '${APP_DIR}/data/tfl_panel.json';
-try {
-    let d = fs.existsSync(path) ? JSON.parse(fs.readFileSync(path, 'utf8')) : { settings: {}, users: [], logs: [] };
-    d.settings = d.settings || {};
-    d.settings.adminUser = '${ADMIN_USER}';
-    d.settings.adminPassHash = crypto.createHash('sha256').update('${ADMIN_PASS}').digest('hex');
-    fs.writeFileSync(path, JSON.stringify(d, null, 2));
-} catch(e) {}
-" 2>/dev/null || true
-ok "Admin credentials configured: Username '${ADMIN_USER}'"
+    # Save credentials into panel database
+    node -e "
+    const fs = require('fs');
+    const crypto = require('crypto');
+    const path = '${APP_DIR}/data/tfl_panel.json';
+    try {
+        let d = fs.existsSync(path) ? JSON.parse(fs.readFileSync(path, 'utf8')) : { settings: {}, users: [], logs: [] };
+        d.settings = d.settings || {};
+        d.settings.adminUser = '${ADMIN_USER}';
+        d.settings.adminPassHash = crypto.createHash('sha256').update('${ADMIN_PASS}').digest('hex');
+        fs.writeFileSync(path, JSON.stringify(d, null, 2));
+    } catch(e) {}
+    " 2>/dev/null || true
+    ok "Admin credentials configured: Username '${ADMIN_USER}'"
+else
+    # Preserve existing credentials if already installed, otherwise default to admin/admin
+    node -e "
+    const fs = require('fs');
+    const crypto = require('crypto');
+    const path = '${APP_DIR}/data/tfl_panel.json';
+    try {
+        let d = fs.existsSync(path) ? JSON.parse(fs.readFileSync(path, 'utf8')) : { settings: {}, users: [], logs: [] };
+        d.settings = d.settings || {};
+        if (!d.settings.adminPassHash) {
+            d.settings.adminUser = 'admin';
+            d.settings.adminPassHash = crypto.createHash('sha256').update('admin').digest('hex');
+            fs.writeFileSync(path, JSON.stringify(d, null, 2));
+        }
+    } catch(e) {}
+    " 2>/dev/null || true
+    ok "Admin credentials verified / preserved."
+fi
 
 # 9. Configure & Start Core VPN Services (Dropbear, Stunnel, WebSocket Proxy, BadVPN)
 hr
@@ -261,17 +278,57 @@ cat << 'EOF' > /etc/issue.net
 <font color="#00ffff"><b>=======================================</b></font>
 EOF
 
+# A.1 Enable Password Authentication on OpenSSH (Port 22)
+msg "Configuring OpenSSH (Port 22) for Password Authentication..."
+sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/g' /etc/ssh/sshd_config 2>/dev/null || true
+sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config 2>/dev/null || true
+sed -i 's/#KbdInteractiveAuthentication yes/KbdInteractiveAuthentication yes/g' /etc/ssh/sshd_config 2>/dev/null || true
+sed -i 's/KbdInteractiveAuthentication no/KbdInteractiveAuthentication yes/g' /etc/ssh/sshd_config 2>/dev/null || true
+
+mkdir -p /etc/ssh/sshd_config.d
+cat << 'EOF' > /etc/ssh/sshd_config.d/99-tunnel-forde.conf
+PasswordAuthentication yes
+KbdInteractiveAuthentication yes
+Banner /etc/issue.net
+ClientAliveInterval 30
+ClientAliveCountMax 3
+EOF
+
+systemctl restart ssh 2>/dev/null || systemctl restart sshd 2>/dev/null || true
+ok "OpenSSH configured on port 22 with Password Authentication enabled."
+
 # B. Dropbear SSH (Ports 109, 143)
 msg "Setting up Dropbear SSH (Ports 109, 143)..."
-cat << 'EOF' > /etc/default/dropbear
-NO_START=0
-DROPBEAR_PORT=143
-DROPBEAR_EXTRA_ARGS="-p 109"
-DROPBEAR_BANNER="/etc/issue.net"
-DROPBEAR_RECEIVE_WINDOW=65536
+apt-get install -y -q dropbear
+
+# Disable Ubuntu 22.04/24.04 socket activation conflict on port 22
+systemctl stop dropbear.socket 2>/dev/null || true
+systemctl disable dropbear.socket 2>/dev/null || true
+systemctl mask dropbear.socket 2>/dev/null || true
+
+# Generate host keys if missing
+mkdir -p /etc/dropbear
+[[ ! -f /etc/dropbear/dropbear_rsa_host_key ]] && dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key 2>/dev/null || true
+[[ ! -f /etc/dropbear/dropbear_ecdsa_host_key ]] && dropbearkey -t ecdsa -f /etc/dropbear/dropbear_ecdsa_host_key 2>/dev/null || true
+[[ ! -f /etc/dropbear/dropbear_ed25519_host_key ]] && dropbearkey -t ed25519 -f /etc/dropbear/dropbear_ed25519_host_key 2>/dev/null || true
+
+cat << 'EOF' > /etc/systemd/system/dropbear.service
+[Unit]
+Description=Dropbear SSH Server (Ports 109, 143)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/dropbear -F -E -p 0.0.0.0:109 -p 0.0.0.0:143 -b /etc/issue.net
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
+systemctl unmask dropbear 2>/dev/null || true
 systemctl enable dropbear 2>/dev/null || true
 systemctl restart dropbear 2>/dev/null || true
 ok "Dropbear SSH configured and active on ports 109, 143."
@@ -323,12 +380,12 @@ import socket
 import select
 import threading
 
-TARGET_HOST = '127.0.0.1'
-TARGET_PORT = 109
+PRIMARY_PORT = 109
+FALLBACK_PORT = 22
 LISTEN_PORTS = [80, 8880, 8080]
 BUFFER_SIZE = 16384
 
-WS_RESPONSE = (
+WS_RESPONSE_101 = (
     b"HTTP/1.1 101 Switching Protocols\r\n"
     b"Upgrade: websocket\r\n"
     b"Connection: Upgrade\r\n"
@@ -342,9 +399,30 @@ def handle_client(client_sock):
         if not req:
             client_sock.close()
             return
-        client_sock.sendall(WS_RESPONSE)
+
         target_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        target_sock.connect((TARGET_HOST, TARGET_PORT))
+        target_sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        connected = False
+        for port in [PRIMARY_PORT, FALLBACK_PORT]:
+            try:
+                target_sock.connect(('127.0.0.1', port))
+                connected = True
+                break
+            except Exception:
+                continue
+
+        if not connected:
+            client_sock.close()
+            return
+
+        req_str = req.decode('utf-8', errors='ignore')
+        if 'upgrade' in req_str.lower():
+            client_sock.sendall(WS_RESPONSE_101)
+        elif req_str.startswith('CONNECT'):
+            client_sock.sendall(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+        else:
+            client_sock.sendall(WS_RESPONSE_101)
+
         socks = [client_sock, target_sock]
         while True:
             r, _, x = select.select(socks, [], socks, 60)

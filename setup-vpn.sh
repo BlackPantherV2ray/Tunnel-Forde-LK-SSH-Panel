@@ -65,19 +65,57 @@ cat << 'EOF' > /etc/issue.net
 <font color="#00ffff"><b>=======================================</b></font>
 EOF
 
+# 2.1 Enable Password Authentication on OpenSSH (Port 22)
+msg "Configuring OpenSSH (Port 22) for Password Authentication..."
+sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/g' /etc/ssh/sshd_config 2>/dev/null || true
+sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config 2>/dev/null || true
+sed -i 's/#KbdInteractiveAuthentication yes/KbdInteractiveAuthentication yes/g' /etc/ssh/sshd_config 2>/dev/null || true
+sed -i 's/KbdInteractiveAuthentication no/KbdInteractiveAuthentication yes/g' /etc/ssh/sshd_config 2>/dev/null || true
+
+mkdir -p /etc/ssh/sshd_config.d
+cat << 'EOF' > /etc/ssh/sshd_config.d/99-tunnel-forde.conf
+PasswordAuthentication yes
+KbdInteractiveAuthentication yes
+Banner /etc/issue.net
+ClientAliveInterval 30
+ClientAliveCountMax 3
+EOF
+
+systemctl restart ssh 2>/dev/null || systemctl restart sshd 2>/dev/null || true
+ok "OpenSSH configured on port 22 with Password Authentication enabled."
+
 # 3. Setup Dropbear SSH (Ports 109, 143)
 msg "Installing and configuring Dropbear SSH (Ports 109, 143)..."
 apt-get install -y -q dropbear
 
-cat << 'EOF' > /etc/default/dropbear
-NO_START=0
-DROPBEAR_PORT=143
-DROPBEAR_EXTRA_ARGS="-p 109"
-DROPBEAR_BANNER="/etc/issue.net"
-DROPBEAR_RECEIVE_WINDOW=65536
+# Disable Ubuntu 22.04/24.04 socket activation conflict on port 22
+systemctl stop dropbear.socket 2>/dev/null || true
+systemctl disable dropbear.socket 2>/dev/null || true
+systemctl mask dropbear.socket 2>/dev/null || true
+
+# Generate host keys if missing
+mkdir -p /etc/dropbear
+[[ ! -f /etc/dropbear/dropbear_rsa_host_key ]] && dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key 2>/dev/null || true
+[[ ! -f /etc/dropbear/dropbear_ecdsa_host_key ]] && dropbearkey -t ecdsa -f /etc/dropbear/dropbear_ecdsa_host_key 2>/dev/null || true
+[[ ! -f /etc/dropbear/dropbear_ed25519_host_key ]] && dropbearkey -t ed25519 -f /etc/dropbear/dropbear_ed25519_host_key 2>/dev/null || true
+
+cat << 'EOF' > /etc/systemd/system/dropbear.service
+[Unit]
+Description=Dropbear SSH Server (Ports 109, 143)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/dropbear -F -E -p 0.0.0.0:109 -p 0.0.0.0:143 -b /etc/issue.net
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
+systemctl unmask dropbear 2>/dev/null || true
 systemctl enable dropbear
 systemctl restart dropbear
 ok "Dropbear SSH configured and active on ports 109, 143."
@@ -119,30 +157,36 @@ systemctl restart stunnel4
 ok "Stunnel4 configured and active on ports 443, 777."
 
 # 5. Setup SSH WebSocket Proxy (Ports 80, 8880, 8080)
-msg "Configuring SSH WebSocket Proxy (Ports 80, 8880, 8080 -> Dropbear 109)..."
+msg "Configuring SSH WebSocket Proxy (Ports 80, 8880, 8080 -> Dropbear 109/22)..."
 mkdir -p /usr/local/bin
 
 cat << 'EOF' > /usr/local/bin/ws-dropbear.py
 #!/usr/bin/env python3
 """
 Tunnel Forde LK - High-Performance Multi-Port WebSocket SSH Proxy
-Listens on ports 80, 8880, 8080 and proxies HTTP/WS payloads to Dropbear 109
+Listens on ports 80, 8880, 8080 and proxies HTTP/WS payloads to Dropbear 109 (or OpenSSH 22)
 """
 import socket
 import select
 import threading
 import sys
 
-TARGET_HOST = '127.0.0.1'
-TARGET_PORT = 109
+PRIMARY_PORT = 109
+FALLBACK_PORT = 22
 LISTEN_PORTS = [80, 8880, 8080]
 BUFFER_SIZE = 16384
 
-WS_RESPONSE = (
+WS_RESPONSE_101 = (
     b"HTTP/1.1 101 Switching Protocols\r\n"
     b"Upgrade: websocket\r\n"
     b"Connection: Upgrade\r\n"
     b"Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n\r\n"
+)
+
+HTTP_RESPONSE_200 = (
+    b"HTTP/1.1 200 OK\r\n"
+    b"Connection: keep-alive\r\n"
+    b"Content-Length: 0\r\n\r\n"
 )
 
 def handle_client(client_sock):
@@ -153,12 +197,32 @@ def handle_client(client_sock):
             client_sock.close()
             return
 
-        # Handshake with standard WebSocket response or 200 OK
-        client_sock.sendall(WS_RESPONSE)
-
+        # Connect to SSH Backend (Dropbear 109, fallback OpenSSH 22)
         target_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        target_sock.connect((TARGET_HOST, TARGET_PORT))
+        target_sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        connected = False
+        for port in [PRIMARY_PORT, FALLBACK_PORT]:
+            try:
+                target_sock.connect(('127.0.0.1', port))
+                connected = True
+                break
+            except Exception:
+                continue
 
+        if not connected:
+            client_sock.close()
+            return
+
+        # Send response handshake
+        req_str = req.decode('utf-8', errors='ignore')
+        if 'upgrade' in req_str.lower():
+            client_sock.sendall(WS_RESPONSE_101)
+        elif req_str.startswith('CONNECT'):
+            client_sock.sendall(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+        else:
+            client_sock.sendall(WS_RESPONSE_101)
+
+        # Tunnel data bi-directionally
         sockets = [client_sock, target_sock]
         while True:
             r_socks, _, x_socks = select.select(sockets, [], sockets, 60)
