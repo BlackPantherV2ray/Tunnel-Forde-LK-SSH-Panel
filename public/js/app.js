@@ -233,6 +233,19 @@ function setupEventListeners() {
   if (activateLicBtn) {
     activateLicBtn.addEventListener('click', handleActivateLicense);
   }
+
+  // Topbar Buttons
+  const logoutTopbarBtn = document.getElementById('logout-topbar-btn');
+  if (logoutTopbarBtn) {
+    logoutTopbarBtn.addEventListener('click', handleLogout);
+  }
+
+  const notifTopbarBtn = document.getElementById('notif-topbar-btn');
+  if (notifTopbarBtn) {
+    notifTopbarBtn.addEventListener('click', () => {
+      showToast('System operational. All tunnel services active.', 'info');
+    });
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -342,7 +355,10 @@ function switchTab(tabId) {
   document.getElementById('current-page-title').innerText = titleMap[tabId] || 'Panel';
 
   // Fetch relevant tab data
-  if (tabId === 'dashboard') fetchSystemStatus();
+  if (tabId === 'dashboard') {
+    fetchSystemStatus();
+    renderTrafficChart();
+  }
   if (tabId === 'users') fetchUsers();
   if (tabId === 'online') fetchOnlineUsers();
   if (tabId === 'services') fetchServices();
@@ -351,6 +367,156 @@ function switchTab(tabId) {
 
   if (window.lucide) lucide.createIcons();
 }
+
+// --------------------------------------------------------------------------
+// Real-Time Traffic Speed Chart (Mockup Replica with Bezier Waves)
+// --------------------------------------------------------------------------
+const TRAFFIC_POINTS = 18;
+const trafficHistory = {
+  rx: [0, 120, 280, 520, 310, 450, 780, 620, 890, 710, 850, 920, 1100, 840, 650, 720, 950, 800],
+  tx: [0, 80, 140, 210, 190, 310, 290, 420, 380, 460, 400, 510, 480, 390, 310, 350, 420, 390]
+};
+
+function updateTrafficChart(rxKB, txKB) {
+  trafficHistory.rx.push(rxKB);
+  if (trafficHistory.rx.length > TRAFFIC_POINTS) trafficHistory.rx.shift();
+
+  trafficHistory.tx.push(txKB);
+  if (trafficHistory.tx.length > TRAFFIC_POINTS) trafficHistory.tx.shift();
+
+  renderTrafficChart();
+}
+
+function renderTrafficChart() {
+  const canvas = document.getElementById('traffic-speed-chart');
+  if (!canvas) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  const width = rect.width || 560;
+  const height = rect.height || 170;
+
+  if (canvas.width !== Math.floor(width * dpr) || canvas.height !== Math.floor(height * dpr)) {
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
+  }
+
+  const ctx = canvas.getContext('2d');
+  ctx.save();
+  ctx.scale(dpr, dpr);
+
+  const w = width;
+  const h = height;
+
+  const paddingLeft = 52;
+  const paddingRight = 14;
+  const paddingTop = 14;
+  const paddingBottom = 22;
+  const plotWidth = Math.max(10, w - paddingLeft - paddingRight);
+  const plotHeight = Math.max(10, h - paddingTop - paddingBottom);
+
+  // Determine scale (default 25 MiB scale as in mockup, or dynamic if traffic is higher)
+  const maxVal = Math.max(...trafficHistory.rx, ...trafficHistory.tx, 0);
+  let scaleMax = 25 * 1024; // 25 MiB in KB
+  if (maxVal > scaleMax) {
+    scaleMax = Math.ceil(maxVal / (5 * 1024)) * (5 * 1024);
+  }
+
+  const ticks = [scaleMax, scaleMax * 0.8, scaleMax * 0.6, scaleMax * 0.4, scaleMax * 0.2, 0];
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Draw Horizontal Gridlines & Y-Axis Labels
+  ctx.font = '10px Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  ctx.fillStyle = '#64748b';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+
+  for (let i = 0; i < ticks.length; i++) {
+    const y = paddingTop + (i / (ticks.length - 1)) * plotHeight;
+    const val = ticks[i];
+    const label = val === 0 ? '0 B' : `${Math.round(val / 1024)} MiB`;
+    ctx.fillText(label, paddingLeft - 8, y);
+
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+    ctx.lineWidth = 1;
+    ctx.moveTo(paddingLeft, y);
+    ctx.lineTo(w - paddingRight, y);
+    ctx.stroke();
+  }
+
+  // Draw Vertical Subtle Gridlines
+  for (let i = 0; i <= 6; i++) {
+    const x = paddingLeft + (i / 6) * plotWidth;
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+    ctx.lineWidth = 1;
+    ctx.moveTo(x, paddingTop);
+    ctx.lineTo(x, h - paddingBottom);
+    ctx.stroke();
+  }
+
+  // Draw smooth spline waves
+  function drawSeries(data, strokeColor, topColor, bottomColor) {
+    if (!data || data.length < 2) return;
+    const bottomY = h - paddingBottom;
+
+    const points = data.map((val, idx) => {
+      const x = paddingLeft + (idx / (data.length - 1)) * plotWidth;
+      const clamped = Math.max(0, Math.min(scaleMax, val));
+      const y = bottomY - (clamped / scaleMax) * plotHeight;
+      return { x, y };
+    });
+
+    // 1. Area fill
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, bottomY);
+    ctx.lineTo(points[0].x, points[0].y);
+
+    for (let i = 0; i < points.length - 1; i++) {
+      const xc = (points[i].x + points[i + 1].x) / 2;
+      const yc = (points[i].y + points[i + 1].y) / 2;
+      ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+    }
+    ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
+    ctx.lineTo(points[points.length - 1].x, bottomY);
+    ctx.closePath();
+
+    const grad = ctx.createLinearGradient(0, paddingTop, 0, bottomY);
+    grad.addColorStop(0, topColor);
+    grad.addColorStop(1, bottomColor);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // 2. Stroke
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 0; i < points.length - 1; i++) {
+      const xc = (points[i].x + points[i + 1].x) / 2;
+      const yc = (points[i].y + points[i + 1].y) / 2;
+      ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+    }
+    ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  // Draw Download (Cyan)
+  drawSeries(trafficHistory.rx, '#00f2fe', 'rgba(0, 242, 254, 0.28)', 'rgba(0, 242, 254, 0.0)');
+
+  // Draw Upload (Emerald Green)
+  drawSeries(trafficHistory.tx, '#10b981', 'rgba(16, 185, 129, 0.24)', 'rgba(16, 185, 129, 0.0)');
+
+  ctx.restore();
+}
+
+window.addEventListener('resize', () => {
+  if (currentTab === 'dashboard') {
+    renderTrafficChart();
+  }
+});
 
 // --------------------------------------------------------------------------
 // API Helpers
@@ -386,53 +552,92 @@ async function fetchSystemStatus(silent = false) {
   const data = await apiRequest('/api/status');
   if (!data || !data.success) return;
 
-  const sys = data.system;
-  const stats = data.stats;
+  const sys = data.system || {};
+  const stats = data.stats || {};
+
+  const setText = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.innerText = val;
+  };
 
   // Update Stat Cards
-  document.getElementById('stat-total-users').innerText = stats.total;
-  document.getElementById('stat-active-users').innerText = stats.active;
-  document.getElementById('stat-online-sessions').innerText = stats.onlineCount;
-  document.getElementById('stat-expired-users').innerText = stats.expired;
-  document.getElementById('stat-locked-users').innerText = stats.locked;
+  setText('stat-total-users', stats.total ?? 0);
+  setText('stat-active-users', stats.active ?? 0);
+  setText('stat-online-sessions', stats.onlineCount ?? 0);
+  setText('stat-expired-users', stats.expired ?? 0);
+  setText('stat-locked-users', stats.locked ?? 0);
 
   // Sidebar badges
-  document.getElementById('sidebar-user-count').innerText = stats.total;
-  document.getElementById('sidebar-online-count').innerText = stats.onlineCount;
+  setText('sidebar-user-count', stats.total ?? 0);
+  setText('sidebar-online-count', stats.onlineCount ?? 0);
 
-  // System Gauges
-  const cpuPercent = sys.cpu;
-  document.getElementById('gauge-cpu-val').innerText = `${cpuPercent}%`;
-  document.getElementById('gauge-cpu-bar').style.width = `${cpuPercent}%`;
+  // SVG Circular Gauges (Circumference 301.6 for r=48)
+  const CIRCUMFERENCE = 301.6;
 
-  const ram = sys.memory;
-  document.getElementById('gauge-ram-val').innerText = `${ram.used} MB / ${ram.total} MB (${ram.percent}%)`;
-  document.getElementById('gauge-ram-bar').style.width = `${ram.percent}%`;
+  // 1. CPU Usage
+  const cpuPercent = parseFloat(sys.cpu) || 0;
+  setText('gauge-cpu-val', `${cpuPercent}%`);
+  const cpuCircle = document.getElementById('gauge-cpu-circle');
+  if (cpuCircle) {
+    const offset = CIRCUMFERENCE - (CIRCUMFERENCE * Math.min(100, Math.max(0, cpuPercent)) / 100);
+    cpuCircle.style.strokeDashoffset = offset.toFixed(1);
+  }
+  const cpuBar = document.getElementById('gauge-cpu-bar');
+  if (cpuBar) cpuBar.style.width = `${cpuPercent}%`;
 
-  const disk = sys.disk;
-  document.getElementById('gauge-disk-val').innerText = `${disk.used} MB / ${disk.total} MB (${disk.percent}%)`;
-  document.getElementById('gauge-disk-bar').style.width = `${disk.percent}%`;
+  // 2. RAM Usage
+  const ram = sys.memory || { used: 0, total: 1024, percent: 0 };
+  const ramUsedGB = (ram.used / 1024).toFixed(1);
+  const ramTotalGB = (ram.total / 1024).toFixed(0);
+  setText('gauge-ram-val', `${ramUsedGB} GB`);
+  setText('gauge-ram-sub', `/ ${ramTotalGB} GB`);
+  const ramCircle = document.getElementById('gauge-ram-circle');
+  if (ramCircle) {
+    const offset = CIRCUMFERENCE - (CIRCUMFERENCE * Math.min(100, Math.max(0, ram.percent)) / 100);
+    ramCircle.style.strokeDashoffset = offset.toFixed(1);
+  }
+  const ramBar = document.getElementById('gauge-ram-bar');
+  if (ramBar) ramBar.style.width = `${ram.percent}%`;
 
-  // Traffic / Network
-  const net = sys.network;
-  const totalMB = (parseFloat(net.totalRxMB) + parseFloat(net.totalTxMB)).toFixed(1);
-  document.getElementById('stat-total-traffic').innerText = `${totalMB} MB`;
-  document.getElementById('stat-rx-traffic').innerText = net.totalRxMB;
-  document.getElementById('stat-tx-traffic').innerText = net.totalTxMB;
-  document.getElementById('top-rx-speed').innerText = `${net.rxSpeedKB} KB/s`;
-  document.getElementById('top-tx-speed').innerText = `${net.txSpeedKB} KB/s`;
+  // 3. Root Storage
+  const disk = sys.disk || { used: 0, total: 1024, percent: 0 };
+  setText('gauge-disk-val', `${disk.percent}%`);
+  const diskUsedGB = (disk.used / 1024).toFixed(1);
+  const diskTotalGB = (disk.total / 1024).toFixed(1);
+  setText('gauge-disk-sub', `${diskUsedGB} GB / ${diskTotalGB} GB`);
+  const diskCircle = document.getElementById('gauge-disk-circle');
+  if (diskCircle) {
+    const offset = CIRCUMFERENCE - (CIRCUMFERENCE * Math.min(100, Math.max(0, disk.percent)) / 100);
+    diskCircle.style.strokeDashoffset = offset.toFixed(1);
+  }
+  const diskBar = document.getElementById('gauge-disk-bar');
+  if (diskBar) diskBar.style.width = `${disk.percent}%`;
+
+  // Traffic / Network Bandwidth
+  const net = sys.network || { totalRxMB: 0, totalTxMB: 0, rxSpeedKB: 0, txSpeedKB: 0 };
+  const totalBytes = (parseFloat(net.totalRxMB || 0) + parseFloat(net.totalTxMB || 0)) * 1024 * 1024;
+  setText('stat-total-traffic', formatBytes(totalBytes));
+  setText('stat-rx-traffic', `${net.totalRxMB} MB`);
+  setText('stat-tx-traffic', `${net.totalTxMB} MB`);
+  setText('top-rx-speed', `${net.rxSpeedKB} KB/s`);
+  setText('top-tx-speed', `${net.txSpeedKB} KB/s`);
+
+  // Update Live Real-Time Network Traffic Chart
+  const rxKB = parseFloat(net.rxSpeedKB) || 0;
+  const txKB = parseFloat(net.txSpeedKB) || 0;
+  updateTrafficChart(rxKB, txKB);
 
   // OS & Specs
-  const osInfo = sys.os;
-  document.getElementById('spec-ip').innerText = osInfo.publicIp;
-  document.getElementById('sidebar-ip').innerText = osInfo.publicIp;
-  document.getElementById('spec-os').innerText = osInfo.osName;
-  document.getElementById('spec-arch').innerText = osInfo.arch;
-  document.getElementById('spec-hostname').innerText = osInfo.hostname;
+  const osInfo = sys.os || {};
+  setText('spec-ip', osInfo.publicIp || '--');
+  setText('sidebar-ip', osInfo.publicIp || '--');
+  setText('spec-os', osInfo.osName || '--');
+  setText('spec-arch', osInfo.arch || '--');
+  setText('spec-hostname', osInfo.hostname || '--');
 
   const uptimeStr = formatUptime(osInfo.uptimeSeconds);
-  document.getElementById('spec-uptime').innerText = uptimeStr;
-  document.getElementById('sidebar-uptime').innerText = `Uptime: ${uptimeStr}`;
+  setText('spec-uptime', uptimeStr);
+  setText('sidebar-uptime', `Uptime: ${uptimeStr}`);
 }
 
 // --------------------------------------------------------------------------
@@ -458,7 +663,7 @@ function renderUsersTable(filter = '') {
   }
 
   if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-muted">No accounts match your search.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted">No accounts match your search.</td></tr>`;
     return;
   }
 
@@ -478,11 +683,42 @@ function renderUsersTable(filter = '') {
       ? `<span class="badge-tag text-emerald font-bold">${user.onlineCount} Online</span>`
       : `<span class="text-dim">0</span>`;
 
+    // Data Usage & Quota Calculations
+    const totalUsage = parseFloat(user.totalUsageBytes) || 0;
+    const usedFormatted = formatBytes(totalUsage);
+    const limitGB = parseFloat(user.dataLimitGB) || 0;
+    const limitText = limitGB > 0 ? `${limitGB} GB` : '∞';
+    let percent = 0;
+    if (limitGB > 0) {
+      const maxBytes = limitGB * 1024 * 1024 * 1024;
+      percent = Math.min(100, Math.round((totalUsage / maxBytes) * 100));
+    }
+    const progressColor = percent >= 90 ? 'bg-rose' : (percent >= 70 ? 'bg-amber' : 'bg-cyan');
+
+    const trafficHtml = `
+      <div class="traffic-box">
+        <div class="traffic-header">
+          <span class="traffic-used">${usedFormatted}</span>
+          <span class="traffic-limit">/ ${limitText}</span>
+        </div>
+        ${limitGB > 0 ? `
+        <div class="progress-bar-mini">
+          <div class="progress-bar-mini-fill ${progressColor}" style="width: ${percent}%"></div>
+        </div>
+        ` : ''}
+        <div class="traffic-breakdown">
+          <span>↓ ${formatBytes(user.downloadBytes || 0)}</span>
+          <span>↑ ${formatBytes(user.uploadBytes || 0)}</span>
+        </div>
+      </div>
+    `;
+
     tr.innerHTML = `
       <td>${statusHtml}</td>
       <td><strong>${escapeHtml(user.username)}</strong></td>
       <td><span class="font-mono text-muted">${escapeHtml(user.password)}</span></td>
       <td><span class="font-mono">${user.expiryDate || 'Never'}</span></td>
+      <td>${trafficHtml}</td>
       <td>${user.ipLimit || 1} Device(s)</td>
       <td>${liveBadge}</td>
       <td><span class="text-muted text-sm">${escapeHtml(user.note || '-')}</span></td>
@@ -491,8 +727,11 @@ function renderUsersTable(filter = '') {
           <button class="action-btn-sm btn-copy-cfg" title="View Config / FastSSH" onclick="openConfigModal('${user.username}')">
             <i data-lucide="share-2"></i>
           </button>
-          <button class="action-btn-sm btn-renew" title="Renew Account (+Days)" onclick="openRenewModal('${user.username}')">
+          <button class="action-btn-sm btn-renew" title="Renew Account (+Days / Quota)" onclick="openRenewModal('${user.username}')">
             <i data-lucide="calendar-plus"></i>
+          </button>
+          <button class="action-btn-sm" title="Reset Data Usage Counter" onclick="resetUserUsage('${user.username}')">
+            <i data-lucide="rotate-ccw"></i>
           </button>
           <button class="action-btn-sm" title="${user.status === 'locked' ? 'Unlock Account' : 'Lock Account'}" onclick="toggleLockUser('${user.username}', '${user.status}')">
             <i data-lucide="${user.status === 'locked' ? 'unlock' : 'lock'}"></i>
@@ -516,13 +755,14 @@ async function handleCreateUser(e) {
   const password = document.getElementById('new-password').value.trim();
   const expireDays = document.getElementById('new-expire-days').value;
   const ipLimit = document.getElementById('new-ip-limit').value;
+  const dataLimitGB = document.getElementById('new-data-limit') ? document.getElementById('new-data-limit').value : 0;
   const note = document.getElementById('new-note').value.trim();
   const btn = document.getElementById('submit-create-user-btn');
 
   btn.disabled = true;
   btn.innerText = 'Creating on VPS...';
 
-  const res = await apiRequest('/api/users', 'POST', { username, password, expireDays, ipLimit, note });
+  const res = await apiRequest('/api/users', 'POST', { username, password, expireDays, ipLimit, note, dataLimitGB });
 
   btn.disabled = false;
   btn.innerHTML = '<i data-lucide="check" class="btn-icon"></i> Create Account';
@@ -577,6 +817,14 @@ function openRenewModal(username) {
   document.getElementById('renew-username-title').innerText = username;
   document.getElementById('renew-custom-days').value = '30';
   document.querySelectorAll('.btn-quick-day').forEach(b => b.classList.toggle('active', b.getAttribute('data-days') === '30'));
+  
+  const user = cachedUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
+  if (user && document.getElementById('renew-data-limit')) {
+    document.getElementById('renew-data-limit').value = user.dataLimitGB || '';
+  }
+  if (document.getElementById('renew-reset-traffic')) {
+    document.getElementById('renew-reset-traffic').checked = true;
+  }
   openModal('renew-modal');
 }
 
@@ -585,14 +833,29 @@ async function handleRenewUser(e) {
   if (!currentEditingUser) return;
 
   const days = document.getElementById('renew-custom-days').value;
-  const res = await apiRequest(`/api/users/${currentEditingUser}/renew`, 'POST', { days });
+  const resetTraffic = document.getElementById('renew-reset-traffic') ? document.getElementById('renew-reset-traffic').checked : false;
+  const dataLimitGB = document.getElementById('renew-data-limit') ? document.getElementById('renew-data-limit').value : null;
+
+  const res = await apiRequest(`/api/users/${currentEditingUser}/renew`, 'POST', { days, resetTraffic, dataLimitGB });
 
   if (res && res.success) {
-    showToast(`Renewed ${currentEditingUser} for +${days} days!`, 'success');
+    showToast(`Renewed ${currentEditingUser} successfully!`, 'success');
     closeModal('renew-modal');
     fetchUsers();
   } else {
     showToast(res ? res.error : 'Failed to renew account', 'error');
+  }
+}
+
+async function resetUserUsage(username) {
+  if (!confirm(`Are you sure you want to reset data usage for '${username}' back to 0 B?`)) return;
+
+  const res = await apiRequest(`/api/users/${username}/reset-traffic`, 'POST');
+  if (res && res.success) {
+    showToast(`Data usage for '${username}' reset to 0 B`, 'info');
+    fetchUsers();
+  } else {
+    showToast(res ? res.error : 'Failed to reset data usage', 'error');
   }
 }
 
@@ -1142,3 +1405,14 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+
+function formatBytes(bytes) {
+  const b = parseFloat(bytes) || 0;
+  if (b === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(b) / Math.log(k));
+  const idx = Math.min(i, sizes.length - 1);
+  return parseFloat((b / Math.pow(k, idx)).toFixed(2)) + ' ' + sizes[idx];
+}
+

@@ -14,6 +14,7 @@ const services = require('./lib/services');
 const telegram = require('./lib/telegram');
 const ssl = require('./lib/ssl');
 const license = require('./lib/license');
+const traffic = require('./lib/traffic');
 
 const app = express();
 const settings = db.getSettings();
@@ -118,8 +119,12 @@ app.get('/api/status', authMiddleware, (req, res) => {
 // User Management: List Users
 app.get('/api/users', authMiddleware, (req, res) => {
   ssh.checkExpirations();
-  const users = db.getAllUsers();
   const online = sessions.getOnlineSessions();
+  try {
+    traffic.pollTraffic(online);
+  } catch (e) {}
+
+  const users = db.getAllUsers();
 
   // Attach online session count to each user
   const usersWithOnline = users.map(u => {
@@ -137,8 +142,8 @@ app.get('/api/users', authMiddleware, (req, res) => {
 // User Management: Create User
 app.post('/api/users', authMiddleware, (req, res) => {
   try {
-    const { username, password, expireDays, ipLimit, note } = req.body;
-    const user = ssh.createSshUser({ username, password, expireDays, ipLimit, note });
+    const { username, password, expireDays, ipLimit, note, dataLimitGB } = req.body;
+    const user = ssh.createSshUser({ username, password, expireDays, ipLimit, note, dataLimitGB });
     res.json({ success: true, user });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -148,9 +153,19 @@ app.post('/api/users', authMiddleware, (req, res) => {
 // User Management: Renew User
 app.post('/api/users/:username/renew', authMiddleware, (req, res) => {
   try {
-    const { days } = req.body;
-    const updated = ssh.renewSshUser(req.params.username, days || 30);
+    const { days, resetTraffic, dataLimitGB } = req.body;
+    const updated = ssh.renewSshUser(req.params.username, days || 30, resetTraffic, dataLimitGB);
     res.json({ success: true, user: updated });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// User Management: Reset Traffic Usage
+app.post('/api/users/:username/reset-traffic', authMiddleware, (req, res) => {
+  try {
+    traffic.resetUserTraffic(req.params.username);
+    res.json({ success: true, message: `Data usage reset for '${req.params.username}'` });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }
@@ -206,6 +221,8 @@ app.get('/api/users/:username/config', authMiddleware, (req, res) => {
 
   const curSettings = db.getSettings();
   const serverIp = system.getPublicIp();
+  const quotaStr = user.dataLimitGB && parseFloat(user.dataLimitGB) > 0 ? `${user.dataLimitGB} GB` : 'Unlimited';
+  const usedStr = traffic.formatBytes(user.totalUsageBytes || 0);
 
   const configData = {
     username: user.username,
@@ -214,6 +231,8 @@ app.get('/api/users/:username/config', authMiddleware, (req, res) => {
     host: serverIp,
     expiryDate: user.expiryDate,
     ipLimit: user.ipLimit,
+    dataQuota: quotaStr,
+    usedData: usedStr,
     ports: {
       openSsh: curSettings.sshDirectPort || 22,
       dropbear: curSettings.dropbearPort || 109,
@@ -235,6 +254,8 @@ Username       : ${user.username}
 Password       : ${user.password}
 Expired Date   : ${user.expiryDate}
 Login Limit    : ${user.ipLimit} Device(s)
+Data Quota     : ${quotaStr}
+Used Traffic   : ${usedStr}
 ---------------------------------
 OpenSSH Port   : ${curSettings.sshDirectPort || 22}
 Dropbear Port  : ${curSettings.dropbearPort || 109}
@@ -597,6 +618,16 @@ const onServerStart = (protocol) => {
       console.error('[AutoKill Loop Error]:', e.message);
     }
   }, 30000);
+
+  // Background Traffic Poller & Quota Enforcer (every 10s)
+  setInterval(() => {
+    try {
+      const activeSessions = sessions.getOnlineSessions();
+      traffic.pollTraffic(activeSessions);
+    } catch (e) {
+      console.error('[Traffic Loop Error]:', e.message);
+    }
+  }, 10000);
 
   // Expiration checker (every 30 mins)
   setInterval(() => {

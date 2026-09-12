@@ -1,63 +1,89 @@
 # ⚡ Tunnel Forde LK - SSH & Multi-Protocol Web Panel
 
-A sleek, lightweight, high-performance **Web Management Dashboard** (inspired by X-UI / 3X-UI) designed specifically for Linux VPS servers running SSH, Dropbear, Stunnel, WebSocket, and BadVPN UDPGW autoscripts (such as *Simple-Dimple*).
+<p align="center">
+  <img src="https://img.shields.io/badge/Release-v1.0.0-00d2ff?style=for-the-badge&logo=rocket" alt="Release">
+  <img src="https://img.shields.io/badge/Platform-Ubuntu%20%7C%20Debian-emerald?style=for-the-badge&logo=linux" alt="Linux">
+  <img src="https://img.shields.io/badge/Node.js-v20%20LTS-339933?style=for-the-badge&logo=nodedotjs" alt="Node">
+  <img src="https://img.shields.io/badge/Support-@Black__Panther__V2ray-2CA5E0?style=for-the-badge&logo=telegram" alt="Telegram Support">
+  <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License">
+</p>
 
-Manage SSH accounts, generate FastSSH connection configs, monitor real-time network traffic, inspect online users, and kick unauthorized multi-logins — **all from your phone or PC web browser**.
+A modern, high-performance, dark-themed **Web Management Dashboard** (inspired by 3X-UI / X-UI) designed specifically for Linux VPS servers running SSH, Dropbear, Stunnel, WebSocket, and BadVPN UDPGW autoscripts (such as *Simple-Dimple*).
+
+Manage SSH accounts, generate FastSSH connection configs, monitor real-time network traffic, inspect online users, kick unauthorized multi-logins, and toggle SSL — **all from your mobile phone or PC browser**.
 
 ---
 
-## 🚀 1-Line Fast Installation (GitHub)
+## 🚀 1-Line Fast Installation (Ubuntu / Debian)
 
-Connect to your Ubuntu or Debian VPS via SSH and run this single command:
+Connect to your VPS via SSH as `root` and run this single command:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/BlackPantherV2ray/tunnel-forde-lk/main/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/BlackPantherV2ray/Tunnel-Forde-LK-SSH-Panel/main/install.sh)
 ```
 
 *Or using wget:*
 ```bash
-wget -qO- https://raw.githubusercontent.com/BlackPantherV2ray/tunnel-forde-lk/main/install.sh | bash
+wget -qO- https://raw.githubusercontent.com/BlackPantherV2ray/Tunnel-Forde-LK-SSH-Panel/main/install.sh | bash
 ```
 
 > [!TIP]
-> If you are testing locally or directly on the VPS after uploading, simply run:
-> ```bash
-> chmod +x install.sh && sudo ./install.sh
-> ```
+> **Complete Turnkey Setup**: The installer automatically deploys the **Tunnel Forde LK Web Panel** along with all core VPN daemons:
+> - **OpenSSH Server** (Port 22)
+> - **Dropbear SSH** (Ports 109, 143)
+> - **Stunnel4 SSL/TLS** (Ports 443, 777)
+> - **SSH WebSocket Proxy** (Ports 80, 8880, 8080)
+> - **BadVPN UDPGW** (Port 7300)
+> - **Node.js 20 LTS & UFW Firewall Rules**
+> All services will be active 🟢 and ready immediately upon completion!
+
+---
+
+## 🔒 Default Access Credentials
+
+Upon installation, open your browser and navigate to:
+
+| Detail | Default Value | Note |
+| :--- | :--- | :--- |
+| **URL** | `http://<YOUR-VPS-IP>:54321` | Accessible via any browser |
+| **Username** | `admin` | Changeable via Settings or CLI |
+| **Password** | `admin` | Changeable via Settings or CLI |
+
+*(You can configure custom domains with free Let's Encrypt SSL certificates anytime from the Web Panel or CLI).*
 
 ---
 
 ## 🌟 Key Features
 
 ### 1. 📊 X-UI Style Live Dashboard
-- **Live System Metrics**: Real-time CPU gauge, RAM gauge, Storage progress bar, Uptime, and Linux Kernel specs.
-- **Traffic Monitor**: Real-time Download (Rx) and Upload (Tx) bandwidth speed (KB/s and MB).
+- **Real-Time Gauges**: Live CPU gauge, RAM usage, Storage disk bar, Uptime, and Linux Kernel specs.
+- **Traffic Bandwidth Monitor**: Real-time Download (Rx) and Upload (Tx) speeds (KB/s and MB counter).
 - **Quick Statistics**: Total Accounts, Active, Expired, Locked, and Live Connected Sessions.
 
 ### 2. 👥 SSH & WebSocket Account Manager
-- **One-Click Create User**:
+- **One-Click User Creation**:
   - Alphanumeric username & random password generator.
-  - Expiry days selector (e.g. 7, 15, 30, 60 days).
+  - Expiry days selector (7, 15, 30, 60 days, or custom).
   - Multi-Login Limit (1 to 10 simultaneous IP connections).
-  - Customer note (Telegram @handle, phone, buyer name).
-- **Instant FastSSH & Payload Export**:
-  - Pre-formatted account text ready to paste into Telegram or WhatsApp.
-  - HTTP Custom / NapsternetV / V2rayNG payload generator.
-  - Offline QR Code generator.
-- **Renew / Extend Account**:
+  - Customer note field (buyer name, phone, Telegram @username).
+- **Instant FastSSH & Payload Exporter**:
+  - Pre-formatted account text ready to copy-paste directly to clients on Telegram or WhatsApp.
+  - Payloads generator for HTTP Custom, NapsternetV, NetMod, and V2rayNG.
+  - Integrated QR Code generator.
+- **Renew / Extend User**:
   - Add +7, +15, +30, or custom days with 1 click.
 - **Instant Lock & Delete**:
-  - Instantly lock an account to deny access without deleting history.
-  - Clean deletion removes user from Linux `/etc/passwd` and database.
+  - Temporarily lock accounts to deny login without deleting account history.
+  - Complete deletion removes the user from Linux `/etc/passwd` and system database.
 
 ### 3. 🟢 Live Online Users & Auto-Kill Enforcer
 - Real-time detection of active Dropbear, OpenSSH, and WebSocket tunnel sessions.
 - Displays remote client IP addresses and connection duration.
-- **Manual Disconnect**: Kick any active session instantly.
-- **Auto-Kill Enforcer Daemon**: Automatically monitors multi-device limits (e.g. 1 user = 1 IP) and terminates unauthorized duplicate connections every 30 seconds.
+- **Manual Kick**: Disconnect any active user session instantly.
+- **Auto-Kill Enforcer Daemon**: Automatically enforces multi-login limits (e.g. 1 account = 1 device) and terminates unauthorized duplicate connections every 30 seconds.
 
 ### 4. ⚙️ System Services Manager
-- Status indicators for:
+- Live status indicators and 1-click controls for:
   - OpenSSH (`ssh`)
   - Dropbear (`dropbear`)
   - Stunnel (`stunnel4`)
@@ -65,33 +91,41 @@ wget -qO- https://raw.githubusercontent.com/BlackPantherV2ray/tunnel-forde-lk/ma
   - BadVPN UDPGW (`badvpn-udpgw` on ports 7100-7300)
   - Xray Core (`xray`)
   - Tunnel Forde LK Web Panel (`tunnel-forde-lk`)
-- Individual restart button for each service or **1-Click "Restart All Services"**.
+- Individual restart buttons or **1-Click "Restart All Services"**.
 
-### 5. 🛠️ Command Line Management (`tfl-panel`)
-Manage your panel directly from the VPS terminal anytime by typing:
-```bash
-tfl-panel
-```
-Options available:
-- `tfl-panel start` - Start web panel
-- `tfl-panel stop` - Stop web panel
-- `tfl-panel restart` - Restart web panel
-- `tfl-panel status` - View panel status & login URL
-- `tfl-panel reset-admin` - Reset admin password
-- `tfl-panel logs` - View live real-time logs
-- `tfl-panel uninstall` - Clean removal
+### 5. 🔒 SSL & Custom Domain Manager
+- 1-Click Let's Encrypt SSL issuance for your custom domain.
+- Automated certificate renewal cronjob.
+- Enables HTTPS on Web Panel and automatically applies certificates to Stunnel.
+
+### 6. 📱 Telegram Integration & Remote Licensing
+- Automated daily database backup sent directly to your Telegram chat at 00:00.
+- Instant alert on Web Panel login.
+- Built-in remote switchable licensing system (Free Community Mode ↔ Commercial Paid Mode).
 
 ---
 
-## 🔒 Default Login Credentials
+## 🛠️ CLI Helper Management (`tfl-panel`)
 
-Upon installation, access your panel at:
-```text
-URL:      http://<YOUR-VPS-IP>:54321
-Username: admin
-Password: admin
+Manage your panel directly from the VPS terminal anytime by typing:
+
+```bash
+tfl-panel
 ```
-*(You can change the username and password immediately under the Settings tab or via `tfl-panel reset-admin`).*
+
+### CLI Quick Commands:
+
+| Command | Action |
+| :--- | :--- |
+| `tfl-panel start` | Start the web panel |
+| `tfl-panel stop` | Stop the web panel |
+| `tfl-panel restart` | Restart the web panel |
+| `tfl-panel status` | Check panel status, port & login URL |
+| `tfl-panel reset-admin` | Change or reset admin username & password |
+| `tfl-panel ssl` | Issue Let's Encrypt SSL certificate for custom domain |
+| `tfl-panel update` | Update panel to latest version from GitHub |
+| `tfl-panel logs` | View live real-time panel logs |
+| `tfl-panel uninstall` | Clean uninstallation |
 
 ---
 
@@ -103,26 +137,13 @@ Password: admin
 
 ---
 
-## 📦 How to Upload this to Your GitHub
+## 📞 Official Support & Updates
 
-To make your personal 1-line installer work under your GitHub profile:
-
-1. Create a new repository on GitHub named `tunnel-forde-lk` (Public).
-2. Push the files in this folder to GitHub:
-   ```bash
-   git init
-   git add .
-   git commit -m "feat: initial release of Tunnel Forde LK Web Panel"
-   git branch -M main
-   git remote add origin https://github.com/BlackPantherV2ray/tunnel-forde-lk.git
-   git push -u origin main
-   ```
-3. Run your 1-line installer on any VPS:
-   ```bash
-   bash <(curl -fsSL https://raw.githubusercontent.com/BlackPantherV2ray/tunnel-forde-lk/main/install.sh)
-   ```
+- **Developer**: Black Panther
+- **Official Telegram**: [@Black_Panther_V2ray](https://t.me/Black_Panther_V2ray)
+- **GitHub Repository**: [BlackPantherV2ray/Tunnel-Forde-LK-SSH-Panel](https://github.com/BlackPantherV2ray/Tunnel-Forde-LK-SSH-Panel)
 
 ---
 
 ## 📄 License
-MIT License. Developed for **Tunnel Forde LK**.
+MIT License © 2026 **Tunnel Forde LK**. All rights reserved.

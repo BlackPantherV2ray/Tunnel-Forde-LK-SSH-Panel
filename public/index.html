@@ -62,13 +62,16 @@
   <div id="app-view" class="app-layout d-none">
     
     <!-- Sidebar -->
+    <!-- Sidebar -->
     <aside class="sidebar">
       <div class="sidebar-header">
         <div class="brand-mark">
-          <span class="bolt-icon">⚡</span>
-          <div>
-            <h2 class="sidebar-brand-name">Tunnel Forde LK</h2>
-            <span class="sidebar-brand-badge">SSH & WS Panel</span>
+          <div class="brand-bolt-circle">
+            <i data-lucide="zap"></i>
+          </div>
+          <div class="brand-title-wrap">
+            <span class="brand-title-main">Tunnel</span>
+            <span class="brand-title-sub text-emerald">Forde LK</span>
           </div>
         </div>
         <button id="sidebar-close-btn" class="mobile-only-btn"><i data-lucide="x"></i></button>
@@ -76,21 +79,21 @@
 
       <nav class="sidebar-nav">
         <a href="#dashboard" class="nav-item active" data-tab="dashboard">
-          <i data-lucide="layout-dashboard"></i>
+          <i data-lucide="home"></i>
           <span>Dashboard</span>
         </a>
         <a href="#users" class="nav-item" data-tab="users">
-          <i data-lucide="users"></i>
-          <span>SSH & WS Accounts</span>
+          <i data-lucide="terminal"></i>
+          <span>SSH Accounts</span>
           <span class="badge" id="sidebar-user-count">0</span>
         </a>
         <a href="#online" class="nav-item" data-tab="online">
-          <i data-lucide="radio"></i>
+          <i data-lucide="users"></i>
           <span>Online Users</span>
           <span class="badge badge-pulse" id="sidebar-online-count">0</span>
         </a>
         <a href="#services" class="nav-item" data-tab="services">
-          <i data-lucide="cpu"></i>
+          <i data-lucide="sliders"></i>
           <span>System Services</span>
         </a>
         <a href="#logs" class="nav-item" data-tab="logs">
@@ -136,160 +139,208 @@
           <h2 id="current-page-title" class="topbar-title">Dashboard</h2>
         </div>
         <div class="topbar-right">
-          <div class="quick-traffic">
-            <span class="traffic-tag"><i data-lucide="arrow-down" class="traffic-icon rx"></i> <span id="top-rx-speed">0 KB/s</span></span>
-            <span class="traffic-tag"><i data-lucide="arrow-up" class="traffic-icon tx"></i> <span id="top-tx-speed">0 KB/s</span></span>
-          </div>
-          <a href="https://t.me/Black_Panther_V2ray" target="_blank" rel="noopener noreferrer" class="btn-topbar-support" title="Telegram: @Black_Panther_V2ray">
-            <svg class="tg-svg-icon" viewBox="0 0 24 24" fill="currentColor" style="width: 15px; height: 15px;">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
-            </svg>
-            <span>Contact Admin</span>
-          </a>
-          <button id="refresh-all-btn" class="btn btn-outline-sm" title="Refresh data">
-            <i data-lucide="refresh-cw" class="btn-icon"></i>
+          <button class="topbar-icon-btn" id="notif-topbar-btn" title="Notifications">
+            <i data-lucide="bell"></i>
           </button>
-          <a href="#settings" class="admin-badge-btn nav-item" data-tab="settings" title="Admin Account Settings">
-            <i data-lucide="user-check"></i>
-            <span id="topbar-admin-username">admin</span>
+          <a href="#settings" class="topbar-icon-btn nav-item" data-tab="settings" title="Settings">
+            <i data-lucide="settings"></i>
           </a>
+          <button id="logout-topbar-btn" class="topbar-icon-btn" title="Sign Out">
+            <i data-lucide="log-out"></i>
+          </button>
         </div>
       </header>
 
       <div class="content-body">
 
         <!-- ============================================================== -->
-        <!-- TAB 1: DASHBOARD -->
+        <!-- TAB 1: DASHBOARD (Cyber Glow UI) -->
         <!-- ============================================================== -->
         <section id="tab-dashboard" class="tab-content active">
           
-          <!-- Top Stat Cards (X-UI Style) -->
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-header">
-                <span class="stat-label">Total Accounts</span>
-                <div class="stat-icon-wrapper blue"><i data-lucide="users"></i></div>
+          <!-- Top Stat Cards (4 Glowing Cyan Cards) -->
+          <div class="stats-grid-cyber">
+            
+            <!-- Card 1: Total Accounts -->
+            <div class="stat-card-cyber">
+              <div class="stat-card-top">
+                <span class="stat-card-label">Total Accounts</span>
+                <div class="stat-card-icon-box">
+                  <i data-lucide="user"></i>
+                </div>
               </div>
-              <div class="stat-value" id="stat-total-users">0</div>
-              <div class="stat-subtext text-muted"><span id="stat-active-users">0</span> active accounts</div>
+              <div class="stat-card-val" id="stat-total-users">0</div>
             </div>
 
-            <div class="stat-card">
-              <div class="stat-header">
-                <span class="stat-label">Online Sessions</span>
-                <div class="stat-icon-wrapper green"><i data-lucide="activity"></i></div>
+            <!-- Card 2: Online Sessions -->
+            <div class="stat-card-cyber">
+              <div class="stat-card-top">
+                <span class="stat-card-label">Online Sessions</span>
+                <div class="stat-card-icon-box">
+                  <i data-lucide="activity"></i>
+                </div>
               </div>
-              <div class="stat-value text-emerald" id="stat-online-sessions">0</div>
-              <div class="stat-subtext text-emerald"><span class="status-indicator online inline"></span> Live Tunnel Clients</div>
+              <div class="stat-card-val-row">
+                <span class="stat-card-val" id="stat-online-sessions">0</span>
+                <span class="stat-live-pill">Live</span>
+              </div>
             </div>
 
-            <div class="stat-card">
-              <div class="stat-header">
-                <span class="stat-label">Expired Accounts</span>
-                <div class="stat-icon-wrapper red"><i data-lucide="clock"></i></div>
+            <!-- Card 3: Expired -->
+            <div class="stat-card-cyber">
+              <div class="stat-card-top">
+                <span class="stat-card-label">Expired</span>
+                <div class="stat-card-icon-box red">
+                  <i data-lucide="calendar"></i>
+                </div>
               </div>
-              <div class="stat-value text-rose" id="stat-expired-users">0</div>
-              <div class="stat-subtext text-muted"><span id="stat-locked-users">0</span> locked accounts</div>
+              <div class="stat-card-val" id="stat-expired-users">0</div>
             </div>
 
-            <div class="stat-card">
-              <div class="stat-header">
-                <span class="stat-label">Total Bandwidth</span>
-                <div class="stat-icon-wrapper purple"><i data-lucide="globe"></i></div>
+            <!-- Card 4: Total Bandwidth -->
+            <div class="stat-card-cyber">
+              <div class="stat-card-top">
+                <span class="stat-card-label">Total Bandwidth</span>
+                <div class="stat-card-icon-box">
+                  <i data-lucide="arrow-up-down"></i>
+                </div>
               </div>
-              <div class="stat-value" id="stat-total-traffic">0 MB</div>
-              <div class="stat-subtext text-muted">↓ <span id="stat-rx-traffic">0</span> MB | ↑ <span id="stat-tx-traffic">0</span> MB</div>
+              <div class="stat-card-val" id="stat-total-traffic">0 GB</div>
             </div>
+
           </div>
 
-          <!-- Live Gauges & System Information -->
-          <div class="system-grid">
-            <!-- CPU & RAM Cards -->
-            <div class="card system-meter-card">
-              <div class="card-header">
-                <h3><i data-lucide="gauge" class="inline-icon"></i> System Resources</h3>
-              </div>
-              <div class="meters-container">
-                <div class="meter-box">
-                  <div class="meter-header">
-                    <span>CPU Usage</span>
-                    <strong id="gauge-cpu-val">0%</strong>
-                  </div>
-                  <div class="progress-bar-bg">
-                    <div id="gauge-cpu-bar" class="progress-bar-fill fill-blue" style="width: 0%"></div>
-                  </div>
-                </div>
-
-                <div class="meter-box">
-                  <div class="meter-header">
-                    <span>Memory (RAM)</span>
-                    <strong id="gauge-ram-val">0 MB / 0 MB (0%)</strong>
-                  </div>
-                  <div class="progress-bar-bg">
-                    <div id="gauge-ram-bar" class="progress-bar-fill fill-emerald" style="width: 0%"></div>
+          <!-- Middle Section: 3 Circular Gauges + Live Real-time Traffic Speed -->
+          <div class="cyber-middle-grid">
+            
+            <!-- Left Card: Circular System Resources -->
+            <div class="cyber-card gauges-card">
+              <div class="gauges-flex-row">
+                
+                <!-- Gauge 1: CPU Usage -->
+                <div class="gauge-column">
+                  <div class="gauge-column-label">CPU Usage</div>
+                  <div class="circle-gauge-box">
+                    <svg class="circle-svg" viewBox="0 0 120 120">
+                      <circle class="circle-bg-ring" cx="60" cy="60" r="48" />
+                      <circle id="gauge-cpu-circle" class="circle-progress-ring stroke-emerald" cx="60" cy="60" r="48" stroke-dasharray="301.6" stroke-dashoffset="301.6" />
+                    </svg>
+                    <div class="circle-center-text">
+                      <span class="circle-main-num" id="gauge-cpu-val">0%</span>
+                    </div>
                   </div>
                 </div>
 
-                <div class="meter-box">
-                  <div class="meter-header">
-                    <span>Root Disk Storage</span>
-                    <strong id="gauge-disk-val">0 GB / 0 GB (0%)</strong>
-                  </div>
-                  <div class="progress-bar-bg">
-                    <div id="gauge-disk-bar" class="progress-bar-fill fill-purple" style="width: 0%"></div>
+                <!-- Gauge 2: RAM Usage -->
+                <div class="gauge-column">
+                  <div class="gauge-column-label">RAM Usage</div>
+                  <div class="circle-gauge-box">
+                    <svg class="circle-svg" viewBox="0 0 120 120">
+                      <circle class="circle-bg-ring" cx="60" cy="60" r="48" />
+                      <circle id="gauge-ram-circle" class="circle-progress-ring stroke-cyan" cx="60" cy="60" r="48" stroke-dasharray="301.6" stroke-dashoffset="301.6" />
+                    </svg>
+                    <div class="circle-center-text">
+                      <span class="circle-main-num" id="gauge-ram-val">0.0 GB</span>
+                      <span class="circle-sub-num" id="gauge-ram-sub">/ 0 GB</span>
+                    </div>
                   </div>
                 </div>
+
+                <!-- Gauge 3: Root Storage -->
+                <div class="gauge-column">
+                  <div class="gauge-column-label">Root Storage</div>
+                  <div class="circle-gauge-box">
+                    <svg class="circle-svg" viewBox="0 0 120 120">
+                      <circle class="circle-bg-ring" cx="60" cy="60" r="48" />
+                      <circle id="gauge-disk-circle" class="circle-progress-ring stroke-emerald" cx="60" cy="60" r="48" stroke-dasharray="301.6" stroke-dashoffset="301.6" />
+                    </svg>
+                    <div class="circle-center-text">
+                      <span class="circle-main-num" id="gauge-disk-val">0%</span>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
 
-            <!-- Server Specs Card -->
-            <div class="card system-specs-card">
-              <div class="card-header">
-                <h3><i data-lucide="server" class="inline-icon"></i> Server Environment</h3>
+            <!-- Right Card: Live Real time Network Traffic Speed -->
+            <div class="cyber-card chart-card">
+              <div class="cyber-card-header">
+                <h4>Live Real time Network Traffic Speed</h4>
               </div>
-              <div class="specs-list">
-                <div class="spec-row">
-                  <span class="spec-title">Public IPv4:</span>
-                  <span class="spec-data font-mono font-bold text-cyan" id="spec-ip">---.---.---.---</span>
-                </div>
-                <div class="spec-row">
-                  <span class="spec-title">Operating System:</span>
-                  <span class="spec-data" id="spec-os">Linux</span>
-                </div>
-                <div class="spec-row">
-                  <span class="spec-title">Architecture:</span>
-                  <span class="spec-data font-mono" id="spec-arch">x86_64</span>
-                </div>
-                <div class="spec-row">
-                  <span class="spec-title">Hostname:</span>
-                  <span class="spec-data" id="spec-hostname">vps</span>
-                </div>
-                <div class="spec-row">
-                  <span class="spec-title">System Uptime:</span>
-                  <span class="spec-data font-mono text-emerald" id="spec-uptime">0h 0m</span>
-                </div>
-                <div class="spec-row">
-                  <span class="spec-title">Panel Version:</span>
-                  <span class="spec-data badge-tag">v1.0.0 (Tunnel Forde LK)</span>
-                </div>
+              <div class="chart-canvas-box">
+                <canvas id="traffic-speed-chart" width="560" height="190"></canvas>
+              </div>
+              <div class="chart-legend-wrap">
+                <span class="legend-chip"><span class="legend-point cyan"></span> Download</span>
+                <span class="legend-chip"><span class="legend-point emerald"></span> Upload</span>
               </div>
             </div>
+
           </div>
 
-          <!-- Quick Protocols Banner -->
-          <div class="card protocols-banner">
-            <div class="banner-content">
-              <div>
-                <h4><span class="text-neon">⚡</span> Active Protocol Ports on this VPS</h4>
-                <p class="text-muted">Compatible with HTTP Custom, HTTP Injector, NapsternetV, PuTTY, OpenVPN, BadVPN UDPGW.</p>
+          <!-- Bottom Section: Active Protocol Badges -->
+          <div class="cyber-card protocols-card-cyber">
+            <div class="cyber-card-header">
+              <h4>Active Protocol Badges</h4>
+            </div>
+            <div class="protocol-badges-strip">
+              
+              <!-- SSH -->
+              <div class="protocol-badge-card">
+                <div class="proto-info">
+                  <div class="proto-name">SSH</div>
+                  <div class="proto-port">Port <span id="proto-port-ssh">22</span></div>
+                </div>
+                <div class="proto-icon-box">
+                  <i data-lucide="terminal"></i>
+                </div>
               </div>
-              <div class="protocol-tags">
-                <span class="protocol-pill"><span class="p-dot"></span> SSH: <b>22</b></span>
-                <span class="protocol-pill"><span class="p-dot"></span> Dropbear: <b>109, 143</b></span>
-                <span class="protocol-pill"><span class="p-dot"></span> SSL/TLS: <b>443</b></span>
-                <span class="protocol-pill"><span class="p-dot"></span> WS HTTP: <b>80, 8080, 8880</b></span>
-                <span class="protocol-pill"><span class="p-dot"></span> UDPGW: <b>7100-7300</b></span>
+
+              <!-- Dropbear -->
+              <div class="protocol-badge-card">
+                <div class="proto-info">
+                  <div class="proto-name">Dropbear</div>
+                  <div class="proto-port">Port <span id="proto-port-dropbear">109</span></div>
+                </div>
+                <div class="proto-icon-box">
+                  <i data-lucide="shield"></i>
+                </div>
               </div>
+
+              <!-- SSL -->
+              <div class="protocol-badge-card">
+                <div class="proto-info">
+                  <div class="proto-name">SSL</div>
+                  <div class="proto-port">Port <span id="proto-port-ssl">443</span></div>
+                </div>
+                <div class="proto-icon-box green">
+                  <i data-lucide="shield-check"></i>
+                </div>
+              </div>
+
+              <!-- WebSocket -->
+              <div class="protocol-badge-card">
+                <div class="proto-info">
+                  <div class="proto-name">WebSocket</div>
+                  <div class="proto-port">Ports <span id="proto-port-ws">80/8080</span></div>
+                </div>
+                <div class="proto-icon-box cyan">
+                  <i data-lucide="arrow-right-left"></i>
+                </div>
+              </div>
+
+              <!-- BadVPN UDPGW -->
+              <div class="protocol-badge-card">
+                <div class="proto-info">
+                  <div class="proto-name">BadVPN UDPGW</div>
+                  <div class="proto-port">Port <span id="proto-port-badvpn">7300</span></div>
+                </div>
+                <div class="proto-icon-box cyan">
+                  <i data-lucide="zap"></i>
+                </div>
+              </div>
+
             </div>
           </div>
 
@@ -320,6 +371,7 @@
                     <th>Username</th>
                     <th>Password</th>
                     <th>Expiration Date</th>
+                    <th>Data Usage</th>
                     <th>Device Limit</th>
                     <th>Live Sessions</th>
                     <th>Note</th>
@@ -328,7 +380,7 @@
                 </thead>
                 <tbody id="users-table-body">
                   <tr>
-                    <td colspan="8" class="text-center py-4 text-muted">Loading accounts...</td>
+                    <td colspan="9" class="text-center py-4 text-muted">Loading accounts...</td>
                   </tr>
                 </tbody>
               </table>
@@ -670,6 +722,12 @@
           </div>
 
           <div class="form-group">
+            <label for="new-data-limit">Data Quota Limit (GB)</label>
+            <input type="number" id="new-data-limit" class="form-control" placeholder="0 for Unlimited (e.g. 10, 50)" min="0" step="1" value="0">
+            <small class="form-hint">0 = Unlimited data. Set e.g. 10 for a 10 GB bandwidth cap.</small>
+          </div>
+
+          <div class="form-group">
             <label for="new-note">Customer Note (Optional)</label>
             <input type="text" id="new-note" class="form-control" placeholder="Buyer name, Telegram @user, or phone">
           </div>
@@ -772,6 +830,18 @@
           <div class="form-group mt-3">
             <label for="renew-custom-days">Custom Additional Days:</label>
             <input type="number" id="renew-custom-days" class="form-control" value="30" min="1" max="365" required>
+          </div>
+
+          <div class="form-group mt-2">
+            <label for="renew-data-limit">Update Data Quota (GB) (Leave empty to keep current):</label>
+            <input type="number" id="renew-data-limit" class="form-control" placeholder="e.g. 10, 50 (0 for Unlimited)" min="0" step="1">
+          </div>
+
+          <div class="form-group mt-2">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.85rem;">
+              <input type="checkbox" id="renew-reset-traffic" checked style="width: 16px; height: 16px; accent-color: var(--accent-cyan);">
+              <span>Reset used data counter to 0 B for new renewal period</span>
+            </label>
           </div>
         </div>
 

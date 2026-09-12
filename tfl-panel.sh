@@ -128,16 +128,38 @@ configure_ssl() {
     local PUBLIC_IP
     PUBLIC_IP=$(curl -s4 --max-time 4 https://api.ipify.org || curl -s4 --max-time 4 https://ifconfig.me/ip || hostname -I | awk '{print $1}')
     echo -e "${C_CYAN}Verifying DNS pointing for ${DOMAIN_NAME}...${C_RESET}"
-    local RESOLVED_IP
-    RESOLVED_IP=$(ping -c 1 "$DOMAIN_NAME" 2>/dev/null | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' | head -n1 || getent ahosts "$DOMAIN_NAME" 2>/dev/null | awk '{print $1}' | head -n1 || true)
+    local ALL_IPS
+    ALL_IPS=$(getent ahosts "$DOMAIN_NAME" 2>/dev/null | awk '{print $1}' | sort -u | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$' || ping -c 1 "$DOMAIN_NAME" 2>/dev/null | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' | head -n1 || true)
 
-    if [[ -n "$RESOLVED_IP" && "$RESOLVED_IP" == "$PUBLIC_IP" ]]; then
+    local HAS_WRONG_IP=false
+    local HAS_CORRECT_IP=false
+
+    for ip in $ALL_IPS; do
+        if [[ "$ip" == "$PUBLIC_IP" ]]; then
+            HAS_CORRECT_IP=true
+        else
+            echo -e "${C_RED}✖ Conflicting A-Record detected: ${DOMAIN_NAME} also points to '${ip}'!${C_RESET}"
+            HAS_WRONG_IP=true
+        fi
+    done
+
+    if [[ "$HAS_WRONG_IP" == "true" ]]; then
+        echo -e "${C_YELLOW}⚠ Warning: Your DNS has multiple conflicting A-records.${C_RESET}"
+        echo -e "${C_YELLOW}Please open your Cloudflare / DNS panel and DELETE the extra A-record(s).${C_RESET}"
+        echo -e "${C_YELLOW}Ensure ONLY ONE A-record exists for '${DOMAIN_NAME}' pointing to '${PUBLIC_IP}' (Proxy status: DNS only).${C_RESET}"
+        echo ""
+        read -rp "Press Enter to return to menu..."
+        return
+    fi
+
+    if [[ "$HAS_CORRECT_IP" == "true" ]]; then
         echo -e "${C_GREEN}✔ DNS Verified: ${DOMAIN_NAME} points to this server (${PUBLIC_IP}).${C_RESET}"
         read -rp "Enter email for Let's Encrypt notices (press Enter to skip): " SSL_EMAIL
         SSL_EMAIL=${SSL_EMAIL:-"admin@${DOMAIN_NAME}"}
 
-        apt-get install -y certbot >/dev/null 2>&1 || true
+        apt-get install -y certbot psmisc >/dev/null 2>&1 || true
         systemctl stop nginx ws-dropbear 2>/dev/null || true
+        fuser -k 80/tcp 2>/dev/null || true
 
         if certbot certonly --standalone --agree-tos --non-interactive -m "$SSL_EMAIL" -d "$DOMAIN_NAME" --preferred-challenges http; then
             mkdir -p "${APP_DIR}/certs"
@@ -167,12 +189,12 @@ configure_ssl() {
             echo -e "${C_GREEN}✔ SSL Certificate successfully installed!${C_RESET}"
             echo -e "${C_WHITE}Access panel at:${C_RESET} ${C_GREEN}https://${DOMAIN_NAME}:54321${C_RESET}"
         else
-            echo -e "${C_RED}Certbot failed to issue certificate. Ensure port 80 is not blocked.${C_RESET}"
+            echo -e "${C_RED}Certbot failed to issue certificate. Ensure port 80 is not blocked and Proxy is DNS Only.${C_RESET}"
         fi
         systemctl start nginx ws-dropbear 2>/dev/null || true
     else
-        echo -e "${C_RED}DNS Error: ${DOMAIN_NAME} points to '${RESOLVED_IP}', but this VPS is '${PUBLIC_IP}'.${C_RESET}"
-        echo -e "${C_YELLOW}Please add an A-Record for ${DOMAIN_NAME} pointing to ${PUBLIC_IP} in your Cloudflare/DNS panel.${C_RESET}"
+        echo -e "${C_RED}DNS Error: ${DOMAIN_NAME} does not point to this VPS (${PUBLIC_IP}).${C_RESET}"
+        echo -e "${C_YELLOW}Please add an A-Record for ${DOMAIN_NAME} pointing to ${PUBLIC_IP} in your Cloudflare/DNS panel (Proxy status: DNS only).${C_RESET}"
     fi
 }
 
@@ -201,7 +223,7 @@ uninstall_panel() {
 update_panel() {
     echo -e "${C_YELLOW}Updating Tunnel Forde LK Panel from GitHub...${C_RESET}"
     TMP_DIR=$(mktemp -d)
-    if git clone --depth=1 "https://github.com/BlackPantherV2ray/tunnel-forde-lk.git" "$TMP_DIR" 2>/dev/null; then
+    if git clone --depth=1 "https://github.com/BlackPantherV2ray/Tunnel-Forde-LK-SSH-Panel.git" "$TMP_DIR" 2>/dev/null; then
         cp -r "$TMP_DIR"/public "$APP_DIR"/
         cp -r "$TMP_DIR"/lib "$APP_DIR"/
         cp -r "$TMP_DIR"/license-bot "$APP_DIR"/
@@ -218,6 +240,15 @@ update_panel() {
     fi
 }
 
+install_vpn_services() {
+    echo -e "${C_YELLOW}Installing Core VPN Services (Dropbear, Stunnel, WebSocket, BadVPN)...${C_RESET}"
+    if [[ -f "${APP_DIR}/setup-vpn.sh" ]]; then
+        bash "${APP_DIR}/setup-vpn.sh"
+    else
+        curl -sSL "https://raw.githubusercontent.com/BlackPantherV2ray/Tunnel-Forde-LK-SSH-Panel/main/setup-vpn.sh" | bash
+    fi
+}
+
 main_menu() {
     check_root
     while true; do
@@ -231,12 +262,13 @@ main_menu() {
         echo -e "  ${C_CYAN}4)${C_RESET} Check Status & Login URL"
         echo -e "  ${C_CYAN}5)${C_RESET} Change Admin Username & Password"
         echo -e "  ${C_CYAN}6)${C_RESET} Configure Custom Domain & SSL (Let's Encrypt)"
-        echo -e "  ${C_CYAN}7)${C_RESET} Update Panel from GitHub"
-        echo -e "  ${C_CYAN}8)${C_RESET} View Live Logs"
-        echo -e "  ${C_CYAN}9)${C_RESET} Uninstall Panel"
+        echo -e "  ${C_CYAN}7)${C_RESET} Install / Fix Core VPN Services (Dropbear, Stunnel, WS, UDPGW)"
+        echo -e "  ${C_CYAN}8)${C_RESET} Update Panel from GitHub"
+        echo -e "  ${C_CYAN}9)${C_RESET} View Live Logs"
+        echo -e "  ${C_CYAN}10)${C_RESET} Uninstall Panel"
         echo -e "  ${C_RED}0)${C_RESET} Exit"
         echo ""
-        read -rp "Select an option [0-9]: " OPTION
+        read -rp "Select an option [0-10]: " OPTION
 
         case "$OPTION" in
             1) start_panel; read -rp "Press Enter to continue..." ;;
@@ -245,9 +277,10 @@ main_menu() {
             4) status_panel; read -rp "Press Enter to continue..." ;;
             5) change_admin_credentials; read -rp "Press Enter to continue..." ;;
             6) configure_ssl; read -rp "Press Enter to continue..." ;;
-            7) update_panel; read -rp "Press Enter to continue..." ;;
-            8) view_logs ;;
-            9) uninstall_panel ;;
+            7) install_vpn_services; read -rp "Press Enter to continue..." ;;
+            8) update_panel; read -rp "Press Enter to continue..." ;;
+            9) view_logs ;;
+            10) uninstall_panel ;;
             0) exit 0 ;;
             *) echo -e "${C_RED}Invalid option!${C_RESET}"; sleep 1 ;;
         esac
@@ -264,10 +297,11 @@ if [[ $# -gt 0 ]]; then
         status) status_panel ;;
         reset-admin|change-admin) change_admin_credentials ;;
         ssl) configure_ssl ;;
+        setup-vpn|vpn) install_vpn_services ;;
         update) update_panel ;;
         logs) view_logs ;;
         uninstall) uninstall_panel ;;
-        *) echo "Usage: tfl-panel {start|stop|restart|status|reset-admin|ssl|update|logs|uninstall}" ;;
+        *) echo "Usage: tfl-panel {start|stop|restart|status|reset-admin|ssl|setup-vpn|update|logs|uninstall}" ;;
     esac
 else
     main_menu

@@ -16,7 +16,7 @@ CLI_NAME="tfl-panel"
 DEFAULT_PORT=54321
 
 # Default GitHub Repo (User can override with REPO_URL environment variable)
-GITHUB_REPO="${GITHUB_REPO:-https://github.com/BlackPantherV2ray/tunnel-forde-lk}"
+GITHUB_REPO="${GITHUB_REPO:-https://github.com/BlackPantherV2ray/Tunnel-Forde-LK-SSH-Panel}"
 # Branch
 BRANCH="${BRANCH:-main}"
 
@@ -61,10 +61,11 @@ fi
 command -v systemctl >/dev/null 2>&1 || die "systemctl is required. This host must run systemd."
 ok "Pre-flight checks passed."
 
-# 2. Install basic dependencies
+# 2. Install basic dependencies & VPN packages
 msg "Updating package cache and installing core dependencies..."
+export DEBIAN_FRONTEND=noninteractive
 apt-get update -y -q
-apt-get install -y -q curl wget git tar gzip procps net-tools lsof ufw || true
+apt-get install -y -q curl wget git tar gzip procps net-tools lsof ufw python3 openssl cmake build-essential dropbear stunnel4 || true
 ok "Core dependencies installed."
 
 # 3. Check / Install Node.js (Node 20 LTS)
@@ -142,18 +143,35 @@ if [[ "$SETUP_DOMAIN" =~ ^[Yy]$ ]]; then
 
     if [[ -n "$DOMAIN_NAME" ]]; then
         msg "Verifying DNS pointing for ${DOMAIN_NAME}..."
-        RESOLVED_IP=$(ping -c 1 "$DOMAIN_NAME" 2>/dev/null | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' | head -n1 || getent ahosts "$DOMAIN_NAME" 2>/dev/null | awk '{print $1}' | head -n1 || true)
-        
-        if [[ -n "$RESOLVED_IP" && "$RESOLVED_IP" == "$PUBLIC_IP" ]]; then
+        local ALL_IPS
+        ALL_IPS=$(getent ahosts "$DOMAIN_NAME" 2>/dev/null | awk '{print $1}' | sort -u | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$' || ping -c 1 "$DOMAIN_NAME" 2>/dev/null | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' | head -n1 || true)
+        local HAS_WRONG_IP=false
+        local HAS_CORRECT_IP=false
+
+        for ip in $ALL_IPS; do
+            if [[ "$ip" == "$PUBLIC_IP" ]]; then
+                HAS_CORRECT_IP=true
+            else
+                warn "Conflicting A-Record detected: ${DOMAIN_NAME} also points to '${ip}'!"
+                HAS_WRONG_IP=true
+            fi
+        done
+
+        if [[ "$HAS_WRONG_IP" == "true" ]]; then
+            warn "Your DNS has multiple conflicting A-records for '${DOMAIN_NAME}'."
+            warn "Please delete the extra A-record in your Cloudflare/DNS panel, leaving only '${PUBLIC_IP}' (DNS only)."
+            warn "Skipping SSL for now. You can run 'tfl-panel' (Option 6) after cleaning DNS."
+        elif [[ "$HAS_CORRECT_IP" == "true" ]]; then
             ok "DNS verified: ${DOMAIN_NAME} points to this server (${PUBLIC_IP})."
             read -rp "Enter admin email for Let's Encrypt notices (press Enter to skip): " SSL_EMAIL
             SSL_EMAIL=${SSL_EMAIL:-"admin@${DOMAIN_NAME}"}
 
             msg "Issuing Let's Encrypt SSL certificate for ${DOMAIN_NAME}..."
-            apt-get install -y -q certbot >/dev/null 2>&1 || true
+            apt-get install -y -q certbot psmisc >/dev/null 2>&1 || true
 
             # Temporarily stop port 80 conflicts if any
             systemctl stop nginx ws-dropbear 2>/dev/null || true
+            fuser -k 80/tcp 2>/dev/null || true
 
             if certbot certonly --standalone --agree-tos --non-interactive -m "$SSL_EMAIL" -d "$DOMAIN_NAME" --preferred-challenges http; then
                 mkdir -p "${APP_DIR}/certs"
@@ -185,13 +203,13 @@ if [[ "$SETUP_DOMAIN" =~ ^[Yy]$ ]]; then
                 ok "SSL Certificate issued and applied successfully!"
                 SSL_CONFIGURED=true
             else
-                warn "Certbot issuance failed. Continuing with standard HTTP access."
+                warn "Certbot issuance failed. Ensure port 80 is not blocked and Proxy is DNS Only."
             fi
 
             # Restore services
             systemctl start nginx ws-dropbear 2>/dev/null || true
         else
-            warn "DNS verification warning: ${DOMAIN_NAME} points to '${RESOLVED_IP}', but this VPS is '${PUBLIC_IP}'."
+            warn "DNS verification warning: ${DOMAIN_NAME} does not point to this VPS (${PUBLIC_IP})."
             warn "Skipping SSL for now. You can run 'tfl-panel' in terminal anytime to setup domain after DNS propagates."
         fi
     fi
@@ -228,7 +246,215 @@ try {
 " 2>/dev/null || true
 ok "Admin credentials configured: Username '${ADMIN_USER}'"
 
-# 9. Register Systemd Service
+# 9. Configure & Start Core VPN Services (Dropbear, Stunnel, WebSocket Proxy, BadVPN)
+hr
+msg "Configuring & Starting Core VPN Services..."
+
+# A. SSH Server Banner
+cat << 'EOF' > /etc/issue.net
+<font color="#00ffff"><b>=======================================</b></font><br>
+<font color="#00ff00"><b>     ⚡ TUNNEL FORDE LK HIGH-SPEED SSH ⚡     </b></font><br>
+<font color="#00ffff"><b>=======================================</b></font><br>
+<font color="#ffaa00"><b>  • Multi-Protocol: SSH / SSL / WS / UDP</b></font><br>
+<font color="#ff3333"><b>  • No DDOS / No Spam / No Torrenting   </b></font><br>
+<font color="#00ffaa"><b>  • Official: t.me/Black_Panther_V2ray </b></font><br>
+<font color="#00ffff"><b>=======================================</b></font>
+EOF
+
+# B. Dropbear SSH (Ports 109, 143)
+msg "Setting up Dropbear SSH (Ports 109, 143)..."
+cat << 'EOF' > /etc/default/dropbear
+NO_START=0
+DROPBEAR_PORT=143
+DROPBEAR_EXTRA_ARGS="-p 109"
+DROPBEAR_BANNER="/etc/issue.net"
+DROPBEAR_RECEIVE_WINDOW=65536
+EOF
+
+systemctl daemon-reload
+systemctl enable dropbear 2>/dev/null || true
+systemctl restart dropbear 2>/dev/null || true
+ok "Dropbear SSH configured and active on ports 109, 143."
+
+# C. Stunnel4 SSL/TLS (Ports 443, 777)
+msg "Setting up Stunnel4 (Ports 443, 777)..."
+mkdir -p /etc/stunnel
+if [[ ! -f /etc/stunnel/stunnel.pem ]]; then
+    if [[ -f "${APP_DIR}/certs/privkey.pem" && -f "${APP_DIR}/certs/fullchain.pem" ]]; then
+        cat "${APP_DIR}/certs/privkey.pem" "${APP_DIR}/certs/fullchain.pem" > /etc/stunnel/stunnel.pem
+    else
+        openssl req -new -x509 -days 3650 -nodes \
+            -subj "/C=LK/ST=Western/L=Colombo/O=TunnelFordeLK/CN=tunnel-forde.lk" \
+            -keyout /etc/stunnel/stunnel.pem \
+            -out /etc/stunnel/stunnel.pem >/dev/null 2>&1 || true
+    fi
+    chmod 600 /etc/stunnel/stunnel.pem 2>/dev/null || true
+fi
+
+cat << 'EOF' > /etc/stunnel/stunnel.conf
+pid = /var/run/stunnel4.pid
+cert = /etc/stunnel/stunnel.pem
+client = no
+socket = l:TCP_NODELAY=1
+socket = r:TCP_NODELAY=1
+
+[dropbear-ssl]
+accept = 443
+connect = 127.0.0.1:109
+
+[openssh-ssl]
+accept = 777
+connect = 127.0.0.1:22
+EOF
+
+sed -i 's/ENABLED=0/ENABLED=1/g' /etc/default/stunnel4 2>/dev/null || echo "ENABLED=1" >> /etc/default/stunnel4
+systemctl daemon-reload
+systemctl enable stunnel4 2>/dev/null || true
+systemctl restart stunnel4 2>/dev/null || true
+ok "Stunnel4 configured and active on ports 443, 777."
+
+# D. SSH WebSocket Proxy (Ports 80, 8880, 8080)
+msg "Setting up SSH WebSocket Proxy (Ports 80, 8880, 8080)..."
+mkdir -p /usr/local/bin
+
+cat << 'EOF' > /usr/local/bin/ws-dropbear.py
+#!/usr/bin/env python3
+import socket
+import select
+import threading
+
+TARGET_HOST = '127.0.0.1'
+TARGET_PORT = 109
+LISTEN_PORTS = [80, 8880, 8080]
+BUFFER_SIZE = 16384
+
+WS_RESPONSE = (
+    b"HTTP/1.1 101 Switching Protocols\r\n"
+    b"Upgrade: websocket\r\n"
+    b"Connection: Upgrade\r\n"
+    b"Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n\r\n"
+)
+
+def handle_client(client_sock):
+    target_sock = None
+    try:
+        req = client_sock.recv(BUFFER_SIZE)
+        if not req:
+            client_sock.close()
+            return
+        client_sock.sendall(WS_RESPONSE)
+        target_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        target_sock.connect((TARGET_HOST, TARGET_PORT))
+        socks = [client_sock, target_sock]
+        while True:
+            r, _, x = select.select(socks, [], socks, 60)
+            if x or not r:
+                break
+            for s in r:
+                other = target_sock if s is client_sock else client_sock
+                data = s.recv(BUFFER_SIZE)
+                if not data:
+                    return
+                other.sendall(data)
+    except Exception:
+        pass
+    finally:
+        try: client_sock.close()
+        except: pass
+        if target_sock:
+            try: target_sock.close()
+            except: pass
+
+def listen_port(port):
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        server.bind(('0.0.0.0', port))
+        server.listen(200)
+    except Exception:
+        return
+    while True:
+        try:
+            client, addr = server.accept()
+            client.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            threading.Thread(target=handle_client, args=(client,), daemon=True).start()
+        except Exception:
+            pass
+
+if __name__ == '__main__':
+    for p in LISTEN_PORTS:
+        threading.Thread(target=listen_port, args=(p,), daemon=True).start()
+    while True:
+        import time
+        time.sleep(3600)
+EOF
+
+chmod +x /usr/local/bin/ws-dropbear.py
+
+cat << 'EOF' > /etc/systemd/system/ws-dropbear.service
+[Unit]
+Description=Tunnel Forde LK - SSH WebSocket Proxy Service
+After=network.target dropbear.service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/python3 /usr/local/bin/ws-dropbear.py
+Restart=always
+RestartSec=3
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable ws-dropbear 2>/dev/null || true
+systemctl restart ws-dropbear 2>/dev/null || true
+ok "SSH WebSocket Proxy active on ports 80, 8880, 8080."
+
+# E. BadVPN UDPGW (Port 7300)
+msg "Setting up BadVPN UDPGW (Port 7300)..."
+if ! command -v badvpn-udpgw >/dev/null 2>&1 && [[ ! -f /usr/bin/badvpn-udpgw ]]; then
+    TMP_BUILD=$(mktemp -d)
+    if git clone --depth=1 https://github.com/ambrop72/badvpn.git "$TMP_BUILD/badvpn" >/dev/null 2>&1; then
+        mkdir -p "$TMP_BUILD/badvpn/build"
+        cd "$TMP_BUILD/badvpn/build"
+        cmake .. -DBUILD_NOTHING_BY_DEFAULT=1 -DBUILD_UDPGW=1 >/dev/null 2>&1 || true
+        make install >/dev/null 2>&1 || true
+        cp badvpn-udpgw/badvpn-udpgw /usr/bin/badvpn-udpgw 2>/dev/null || true
+    fi
+    rm -rf "$TMP_BUILD"
+fi
+
+if [[ -f /usr/local/bin/badvpn-udpgw && ! -f /usr/bin/badvpn-udpgw ]]; then
+    ln -sf /usr/local/bin/badvpn-udpgw /usr/bin/badvpn-udpgw
+fi
+
+if command -v badvpn-udpgw >/dev/null 2>&1 || [[ -f /usr/bin/badvpn-udpgw ]]; then
+    cat << 'EOF' > /etc/systemd/system/badvpn-udpgw.service
+[Unit]
+Description=Tunnel Forde LK - BadVPN UDPGW Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/badvpn-udpgw --listen-addr 127.0.0.1:7300 --max-clients 500 --max-connections-for-client 20
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    systemctl daemon-reload
+    systemctl enable badvpn-udpgw 2>/dev/null || true
+    systemctl restart badvpn-udpgw 2>/dev/null || true
+    ok "BadVPN UDPGW active on port 7300."
+fi
+
+# 10. Register Web Panel Systemd Service
 msg "Configuring systemd service (${SERVICE_NAME}.service)..."
 cat << EOF > "/etc/systemd/system/${SERVICE_NAME}.service"
 [Unit]
@@ -253,22 +479,31 @@ EOF
 systemctl daemon-reload
 systemctl enable "${SERVICE_NAME}"
 systemctl restart "${SERVICE_NAME}"
-ok "Service registered and started."
+ok "Panel service registered and started."
 
-# 10. Firewall Configuration
-msg "Checking firewall rules for port ${DEFAULT_PORT}..."
+# 11. Firewall Configuration (Allow VPN + Panel Ports)
+msg "Configuring firewall rules..."
 if command -v ufw >/dev/null 2>&1; then
     if ufw status | grep -qw "active"; then
+        ufw allow 22/tcp comment "OpenSSH" >/dev/null 2>&1 || true
+        ufw allow 80/tcp comment "WebSocket HTTP" >/dev/null 2>&1 || true
+        ufw allow 109/tcp comment "Dropbear 1" >/dev/null 2>&1 || true
+        ufw allow 143/tcp comment "Dropbear 2" >/dev/null 2>&1 || true
+        ufw allow 443/tcp comment "Stunnel SSL" >/dev/null 2>&1 || true
+        ufw allow 777/tcp comment "Stunnel SSL Alt" >/dev/null 2>&1 || true
+        ufw allow 8080/tcp comment "WebSocket Alt" >/dev/null 2>&1 || true
+        ufw allow 8880/tcp comment "WebSocket Alt" >/dev/null 2>&1 || true
+        ufw allow 7300/udp comment "BadVPN UDPGW" >/dev/null 2>&1 || true
         ufw allow ${DEFAULT_PORT}/tcp comment "Tunnel Forde LK Panel" >/dev/null 2>&1 || true
-        ok "Allowed port ${DEFAULT_PORT} in UFW firewall."
+        ok "Allowed VPN & Panel ports in UFW firewall."
     fi
 fi
 
 sleep 2
 
-# 11. Display Success Banner
+# 12. Display Success Banner
 hr
-echo -e "${C_GREEN}✔ TUNNEL FORDE LK WEB PANEL DEPLOYED SUCCESSFULLY!${C_RESET}"
+echo -e "${C_GREEN}✔ TUNNEL FORDE LK WEB PANEL & VPN SERVICES DEPLOYED SUCCESSFULLY!${C_RESET}"
 hr
 echo ""
 echo -e "${C_WHITE}Dashboard Access Details:${C_RESET}"
@@ -280,6 +515,14 @@ else
 fi
 echo -e "  ${C_CYAN}Username:${C_RESET}    ${C_GREEN}${ADMIN_USER}${C_RESET}"
 echo -e "  ${C_CYAN}Password:${C_RESET}    ${C_GREEN}${ADMIN_PASS}${C_RESET}"
+echo ""
+echo -e "${C_WHITE}Active Core VPN Protocols & Ports:${C_RESET}"
+echo -e "  • ${C_CYAN}OpenSSH Server:${C_RESET}       ${C_GREEN}Port 22${C_RESET}       [Active 🟢]"
+echo -e "  • ${C_CYAN}Dropbear SSH:${C_RESET}         ${C_GREEN}Port 109, 143${C_RESET} [Active 🟢]"
+echo -e "  • ${C_CYAN}Stunnel4 (SSL/TLS):${C_RESET}   ${C_GREEN}Port 443, 777${C_RESET} [Active 🟢]"
+echo -e "  • ${C_CYAN}SSH WebSocket Proxy:${C_RESET}  ${C_GREEN}Port 80, 8880, 8080${C_RESET} [Active 🟢]"
+echo -e "  • ${C_CYAN}BadVPN UDPGW:${C_RESET}         ${C_GREEN}Port 7300${C_RESET}     [Active 🟢]"
+echo -e "  • ${C_CYAN}Tunnel Forde LK Web:${C_RESET}  ${C_GREEN}Port ${DEFAULT_PORT}${C_RESET}   [Active 🟢]"
 echo ""
 echo -e "${C_WHITE}Command Line Management:${C_RESET}"
 echo -e "  Type ${C_GREEN}tfl-panel${C_RESET} in your terminal anytime to manage panel, reset password or configure domain."
